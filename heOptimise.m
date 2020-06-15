@@ -1,17 +1,18 @@
 function f=heOptimise
+t0=0;
 tend=720;
-tvec=[-180,92,122,153,183,tend];
-lastInt=(tend-tvec(end-1))/30;
+months=[1    32    61    92   122   153   183   214   245   275   306   336];
+tvec=[t0,months(4:11)];%Fit tvec(1)=t0
+lastInt=1;%(tend-tvec(end-1))/30;
 numInt=length(tvec)-3;
 
 NNsector=[334594,3467837,2332332,7383886,1340524,1300949,373380,4031981,9741730,1828106,33704681]';
 
-hospThresh=10^4;
+hospThresh=[10^3,10^7];
 %%
 %Tune epi-midel to pre-lockdown:
 [pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector);%,.04,.0025);
 %%
-
 G=[1962	-1022	-5	-30	0	0	-8	-5	-4	-3;
 -430	38558	-3199	-4783	-496	-358	-316	-980	-2944	-428;
 -21	-473	16041	-343	0	-303	-1817	-160	-508	-15;
@@ -22,27 +23,28 @@ G=[1962	-1022	-5	-30	0	0	-8	-5	-4	-3;
 -104	-1954	-1124	-3699	-1660	-2216	-762	27555	-2421	-710;
 -2	-140	-108	-248	-72	-187	-347	-482	39791	-14;
 -2	-16	-1	-6	-138	-107	-7	-57	-351	7210];
-b=[5318,147744,74405,184988,54354,72676,149844,77424,229146,39148];
+b=[5318,147744,74405,184988,54354,72676,149844,77424,229146,39148]/6;
 b=repmat(b',numInt,1);
-
+objFun=[922,18515,8925,27340,9296,9765,22150,20185,26164,4914];
+objFun=repmat(objFun',numInt,1);
+%%
 kkron=eye(numInt-1);
 kkron(end+1,end+1)=1/lastInt;%Account for last interval being longer
 Gall=sparse(kron(kkron,G));
 lx=size(Gall,1);
-Gvec=diag(Gall);
-Z=Gall-diag(Gvec);
-%z0=zeros(lx,lx);
-Z2=[Gall;-Gall];%<0,k
+%Gvec=diag(Gall);
+Z2=[Gall;-Gall];%<0,b
 b2=[b;zeros(lx,1)];
 
 lb=zeros(lx,1);
 ub=ones(lx,1);
-X0=.1*rand(lx,1);
+X0=zeros(lx,1);
 
-fun1=@(Xit)econGDP(Gvec,Xit);
-fun2=@(Xit)econConstraint(Z,Xit);
+fun1=@(Xit)econGDP(objFun,Xit);
+%fun2=@(Xit)econConstraint(Z,Xit);
 nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh);
-xoptim=fmincon(fun1,X0,Z2,b2,[],[],lb,ub,nonlcon);
+options=optimoptions(@fmincon,'UseParallel',1,'MaxFunctionEvaluations',100000);
+xoptim=fmincon(fun1,X0,Z2,b2,[],[],lb,ub,nonlcon,options);
 f=xoptim;
 %%
 
@@ -62,7 +64,7 @@ end
 
 function [c,cex]=epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh)
 [~,h]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,0);
-c=h-hospThresh;
+c=max(h-hospThresh);
 cex=[];
 end
 

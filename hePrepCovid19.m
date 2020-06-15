@@ -38,8 +38,9 @@ K=heMakeDs(NN,ones(length(NN)-1,1));%,1);
 %K=normr(K);
 D=kron(C,K);
 %%
-toHosp=3;%Symp to hosp
-Thosp=10;%In hosp****
+%toHosp=3;%Symp to hosp%****
+propHospGivenInf=.04;
+Thosp=5;%In hosp****
 Text=4.6;
 Tonset=1;
 pr=struct;
@@ -55,11 +56,12 @@ pr.p3=1;
 pr.p4=1;
 pr.q1=0;
 pr.q2=0;
-
+%
 pr.g4=1/(1/pr.g2-1/pr.q1);%~q's and other gammaspr.p1=1-.34;
 pr.g4X=1/(1/pr.gX+1/pr.q2);
-
-pr.h=1/toHosp;
+%
+ph=propHospGivenInf/pr.p1/pr.p2;%proportion of severe that are hospitalised%****
+pr.h=ph/(1-ph);%1/toHosp;
 pr.mu=.0025/.04;%muvec;
 pr.odds=0;
 pr.qnew=0;

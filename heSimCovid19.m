@@ -46,7 +46,7 @@ if solvetype==2
         Dout=[Dout;Dclass(2:end,:)];
         DEout(:,i)=DEcum;
         Rout(:,i)=Rcum;
-        Iout=[Iout;Itot];
+        Iout=[Iout;Itot(2:end,:)];
         t0=tend;
         %%
         %HE:
@@ -90,7 +90,8 @@ elseif solvetype==3
 end
 %For plots:
 f=toutAll;%(2:end);
-g=max(sum(Hout(toutAll>tvec(3),:),2));%Rout+DEout;%sum(Hout,2);%-diff(sum(Sout,2))./diff(toutAll);
+%g=max(sum(Hout(toutAll>tvec(3),:),2));
+g=[max(sum(Hout(toutAll>tvec(3),:),2)),sum(Rout(end,:))];%Rout+DEout;%sum(Hout,2);%-diff(sum(Sout,2))./diff(toutAll);
 %g=cumsum(Iout);
 %g=sum(Dout,2);
 end
@@ -122,7 +123,7 @@ end
 function f=plotEpi(tout,Y,H,n,dodiff,tvec)
 yvar='Inc./hosp.';%'Susceptibles'; 'Hospitalisations';
 solvetype=2;
-tend=720;%720;%For plot only
+tend=tvec(end);%720;%For plot only
 na=size(Y,2)/n;
 cmap=lines(7);
 if solvetype==2
@@ -176,7 +177,7 @@ if solvetype==2
     ylabel('Population','FontSize',fs);%yvar
     set(gca,'FontSize',fs);
     axis ([0,tend,0,maxY])
-    legend([h1,h2],'Incidence','Hospitalisations','location','NE')
+    legend([h1,h2],'Incidence','Hospitalisations','location','NW')
     %
     if na==4
         legend(h,{'0-4','5-19','20-64','65+'},'location','NE')
