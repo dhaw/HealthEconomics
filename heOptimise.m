@@ -8,7 +8,7 @@ numInt=length(tvec)-3;
 
 NNsector=[334594,3467837,2332332,7383886,1340524,1300949,373380,4031981,9741730,1828106,33704681]';
 
-hospThresh=[10^3,10^7];
+hospThresh=[10^4,1];
 %%
 %Tune epi-midel to pre-lockdown:
 [pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector);%,.04,.0025);

@@ -23,6 +23,7 @@ if solvetype==2
     Iout=[];
     DEout=zeros(nbar,lt);
     Rout=DEout;
+    Rt=zeros(lt-1,1);
     for i=1:lt-1
         D=Dvec(:,:,i);
         tend=tvec(i+1);
@@ -45,13 +46,14 @@ if solvetype==2
         Hout=[Hout;Hclass(2:end,:)];
         Dout=[Dout;Dclass(2:end,:)];
         DEout(:,i)=DEcum;
-        Rout(:,i)=Rcum;
+        %Rout(:,i)=Rcum;
         Iout=[Iout;Itot(2:end,:)];
         t0=tend;
         %%
         %HE:
         %Calculate in advance?
         %Need to add age structure in here - only uses n, not na****
+        Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,Sclass(end,:)');
         if i<lt-1
             Xh2w=NNvec(1:n-1,i+1)-NNvec(1:n-1,i);%Addition to each wp next intervention step
             Xw2h=-Xh2w; Xw2h(Xw2h<0)=0; 
@@ -89,9 +91,9 @@ elseif solvetype==3
     %f=stochSim(y0,beta,gamma,n,nbar,NN,NN0,D,seed,phi1,phi2,tau,alpha);
 end
 %For plots:
-f=toutAll;%(2:end);
+f=Rt;%toutAll;%(2:end);
 %g=max(sum(Hout(toutAll>tvec(3),:),2));
-g=[max(sum(Hout(toutAll>tvec(3),:),2)),sum(Rout(end,:))];%Rout+DEout;%sum(Hout,2);%-diff(sum(Sout,2))./diff(toutAll);
+g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%sum(Rout(end,:))];%Rout+DEout;%sum(Hout,2);%-diff(sum(Sout,2))./diff(toutAll);
 %g=cumsum(Iout);
 %g=sum(Dout,2);
 end
@@ -173,6 +175,16 @@ if solvetype==2
     hold on
     semilogy(tout,Yall);
     %}
+    
+
+    lt=length(tvec);
+    points=tvec+10;
+    pointsy=.93*maxY;
+    txt={'1','2','3','4','5','6'};
+    for i=3:lt-1
+        text(points(i),pointsy,txt{i-2},'fontsize',20)
+    end
+    
     xlabel('Time (days since 1st Jan)','FontSize',fs);
     ylabel('Population','FontSize',fs);%yvar
     set(gca,'FontSize',fs);

@@ -66,7 +66,7 @@ pr.mu=.0025/.04;%muvec;
 pr.odds=0;
 pr.qnew=0;
 pr.red=2/3;
-R0=2.5;
+pr.R0=2.5;
 %%
 %Debug stuff:
 %hvec=zeros(nbar,1);
@@ -106,5 +106,5 @@ V(5*ntot+1:6*ntot,2*ntot+1:3*ntot)=diag(-(1-pr.p4).*pr.p2);
 V(6*ntot+1:7*ntot,2*ntot+1:3*ntot)=diag(-pr.p4.*pr.p2);
 GD=F/V;
 %}
-d=eigs(GD,1); R0a=max(d); beta=R0/R0a;
+d=eigs(GD,1); R0a=max(d); beta=pr.R0/R0a;
 end
