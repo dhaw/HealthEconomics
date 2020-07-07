@@ -1,4 +1,4 @@
-function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotTau)
+function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotTau,data64)
 %Inputs up to beta are outputs from hePrepCovid19
 %Xit - column vector with proportion of each sector open at each
 %intervention point. 
@@ -96,11 +96,15 @@ Dvec=D;
 %HE:
 %Need to add age structure in here - only uses n, not na****
 %tvec=[-180,92,122,153,183,tend];%,214,366];%245,275,306,336,tend];
+lc=4;%*age
+adInd=3;%Age group of adults *age
 lt=length(tvec);
-XitMat=reshape(Xit,nbar-1,lt-3);
-NNvec=repmat(NNbar(1:end-1),1,lt-3).*XitMat;
+lx=length(Xit)/(lt-3);%Number of sectors
+XitMat=reshape(Xit,lx,lt-3);
+NNvec=repmat(NNbar(1:lx),1,lt-3).*XitMat;%Assumes pre-lockdown=fully open
 NNworkSum=sum(NNvec,1);
-NNvec(end+1,:)=sum(NNbar)-NNworkSum;
+NNvec(lx+1:lx+lc,1:lt-3)=repmat(NNbar(lx+1:lx+lc),1,lt-3);
+NNvec(lx+adInd,:)=sum(NNbar([1:lx,lx+adInd]))-NNworkSum;
 %{
 lt=length(tvec);
 NNvec=repmat(NNbar,1,lt-1);%Full heterogeneity
@@ -108,14 +112,17 @@ Dvec=repmat(D,[1,1,lt-1]);
 NNmat=reshape(NNbar,n,na);%Include at home****
 NNworkSum=sum(NNmat(1:n-1,:),1);
 %}
-NNvec=[NNbar,[zeros(length(NNbar)-1,1);sum(NNbar)],NNvec];
-NNfrac=NNvec(1:end-1,2)./NNbar(1:end-1,1);%Xit for lockdown
+%Manually define populations during lockdown:
+NNvec=[NNbar,[zeros(lx,1);NNbar(lx+1:lx+lc)],NNvec];
+NNvec(lx+adInd,2)=sum(NNbar([1:lx,lx+adInd]));
+NNfrac=NNvec(1:lx,2)./NNbar(1:lx,1);%Xit for lockdown
+%
 Dvec=repmat(D,[1,1,lt-1]);
-Dvec(:,:,2)=heMakeDs(NNvec(:,2),NNfrac);%,0);
+Dvec(:,:,2)=heMakeDs(NNvec(:,2),NNfrac,data64,1);%,0);
 %if lt>3
 for i=3:lt-1
     %NNfrac=NNvec(1:end-1,i)./NNbar(1:end-1,1);
-    Dvec(:,:,i)=heMakeDs(NNvec(:,i),XitMat(:,i-2));%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
+    Dvec(:,:,i)=heMakeDs(NNvec(:,i),XitMat(:,i-2),data64,1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
     %{
     %Toy example:
     factor=(i-2)/(lt-2);%Includes making lockdown matrix
