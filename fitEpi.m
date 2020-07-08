@@ -1,4 +1,4 @@
-function f=fitEpi(NNsectorAges,ydata)
+function f=fitEpi(NNsectorAges,ydata,data64)
 %Data=matrix - vector of weekly deaths by week of year
 %hePrepCovid19 - feed in R0
 %heSimCovid19 - output deaths
@@ -11,7 +11,7 @@ x0=[2.5,0];%R0,t0
 lb=[1,-60];
 ub=[4,60];
 
-fun=@(params,xdata)sim2fit(NNsectorAges,params,v7);
+fun=@(params,xdata)sim2fit(NNsectorAges,params,v7,data64);
 %poptim=lsqcurvefit(fun,x0,xdata,ydata,lb,ub);
 
 rng default % For reproducibility
@@ -23,10 +23,10 @@ poptim=run(ms,problem,20);
 f=poptim;
 end
 
-function f=sim2fit(NNsectorAges,params,v7)
+function f=sim2fit(NNsectorAges,params,v7,data64)
 tvec=[params(2),82,83,84];%80=last day of interest
-[pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(NNsectorAges,params(1));
-[simu,~]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,ones(10,1),tvec,0);
+[pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(NNsectorAges,data64,params(1));
+[simu,~]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,ones(63,1),tvec,0,data64);
 %tout=simu(v7,1);
 f=simu(v7);%Cumulative deaths
 end

@@ -113,16 +113,19 @@ NNmat=reshape(NNbar,n,na);%Include at home****
 NNworkSum=sum(NNmat(1:n-1,:),1);
 %}
 %Manually define populations during lockdown:
-NNvec=[NNbar,[zeros(lx,1);NNbar(lx+1:lx+lc)],NNvec];
-NNvec(lx+adInd,2)=sum(NNbar([1:lx,lx+adInd]));
-NNfrac=NNvec(1:lx,2)./NNbar(1:lx,1);%Xit for lockdown
+NNvec=[NNbar,[NNbar(1:lx).*data64.xmin';NNbar(lx+1:lx+lc)],NNvec];
+%NNvec(lx+adInd,2)=sum(NNbar([1:lx,lx+adInd]));
+%NNfrac=NNvec(1:lx,2)./NNbar(1:lx,1);%Xit for lockdown
+NNvec(lx+adInd,2)=NNvec(lx+adInd,2)+sum(NNvec(1:lx,1)-NNvec(1:lx,2));
 %
+%
+pr.betamod=[1,.5,.5,.5,.5,.5,.5,.5];
 Dvec=repmat(D,[1,1,lt-1]);
-Dvec(:,:,2)=heMakeDs(NNvec(:,2),NNfrac,data64,1);%,0);
+Dvec(:,:,2)=pr.betamod(2)*heMakeDs(NNvec(:,2),data64.xmin',data64,1);%,0); %NNfrac
 %if lt>3
 for i=3:lt-1
     %NNfrac=NNvec(1:end-1,i)./NNbar(1:end-1,1);
-    Dvec(:,:,i)=heMakeDs(NNvec(:,i),XitMat(:,i-2),data64,1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
+    Dvec(:,:,i)=pr.betamod(i)*heMakeDs(NNvec(:,i),XitMat(:,i-2),data64,1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
     %{
     %Toy example:
     factor=(i-2)/(lt-2);%Includes making lockdown matrix

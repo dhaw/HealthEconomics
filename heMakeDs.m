@@ -14,7 +14,7 @@ C=[1.7112    0.4927    0.4049    0.0293;
 adInd=3;%Adult index
 %
 lc=length(C);
-C=C*background/C(3,3);
+C=C*background/sum(C(3,:));
 CworkRow=C(3,:);
 %%
 %if length(NN)==lc+1%*1Dage
@@ -41,7 +41,7 @@ if length(NN)==14
     matC=repmat(x.*valC',1,ln).*repmat(NN'/sum(NN),lx+lc,1);
     %matC(ln,ln)=0;
     f=matA+matB+matC;
-elseif length(NN)==64
+elseif length(NN)==67
     ln=length(NN);
     NNrel=NN([1:lx,lx+adInd])/sum(NN([1:lx,lx+adInd]));
     %Make A:
@@ -52,30 +52,33 @@ elseif length(NN)==64
     %Make B and C:
     valB=data64.B;
     valC=data64.C;
-    valC(lx:1:lx+lc)=0;
     if int==1
         valB=valB.*(1-data64.wfhAv);
         valC=valC.*(1-data64.wfhAv);
     end
     valB(lx+1:ln)=0;
-    valC(lx:1:lx+lc)=0;
+    valC(lx:1:ln)=0;
     %
     x(lx+1:lx+lc)=0;
     matB=diag(x.*valB');
     matB(ln,ln)=0;
-    matC=repmat(x.*valC',1,ln).*repmat(NN'/sum(NN),lx+lc,1);
+    NNrep=repmat(NN'/sum(NN),lx+lc,1);
+    matC=repmat(x.*valC',1,ln).*NNrep;
     
     %Modify depending on x:
     %Education:
     matA(lx+1,lx+1)=matA(lx+1,lx+1)+data64.schoolA1*x(55);
     matA(lx+2,lx+2)=matA(lx+2,lx+2)+data64.schoolA2*x(55);
     %Hospitality:
-    
+    sects=[58,59,60,62];
+    psub=data64.NNsector(sects)';
+    psub=sum(psub.*x(sects))/sum(psub);
+    matA([1:lx,lx+3:ln],:)=matA([1:lx,lx+3:ln],:)+NNrep([1:lx,lx+3:ln],:)+psub*data64.hospA34(1);
     %Transport:
     if int==0
-        matA(1:lx,1:lx)=matA(1:lx,1:lx)*data.travelA3;
+        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*data64.travelA3(1);
     else
-        matA(1:lx,1:lx)=matA(1:lx,1:lx)*data.travelA3*repmat(1-data64.wfhAv,lx,1).*repmat(1-data64.wfhAv',1,lx);
+        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*data64.travelA3(1).*repmat(1-data64.wfhAv,lx,1).*repmat(1-data64.wfhAv',1,lx);
     end
     %
     f=matA+matB+matC;

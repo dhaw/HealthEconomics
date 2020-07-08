@@ -1,11 +1,7 @@
-function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,data64)%,hvec,muvec)
+function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,data64)%,R0)
 %D - column vector or populations.
 %Possible generalsiation to within-sector heterogeneity - one column per
 %category. 
-%hvec - hospitalisations by age group. 
-%muvec - deaths by age group. 
-%Currently 1 age group, so hvec and muvec are scalars. 
-
 lc=4;
 adInd=3;
 lx=length(D)-lc;
@@ -83,7 +79,7 @@ end
 pr.odds=0;
 pr.qnew=0;
 pr.red=2/3;
-pr.R0=2.7106;
+pr.R0=1.6941;%R0;%2.7106;
 %%
 %isdual=1 - equivalent here
 %Ceff=kron(C,Ckron);%Urb/rural mixing here

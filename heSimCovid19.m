@@ -1,5 +1,5 @@
 function [f,g]=heSimCovid19(pr,beta,tvec,Dvec,n,nbar,NNvec,phi1,phi2,seedvec,S0,tau,plotTau)
-lx=10;
+lx=63;
 adInd=3;
 %{
 %Feed in to function - from prep
@@ -176,8 +176,6 @@ if solvetype==2
     hold on
     semilogy(tout,Yall);
     %}
-    
-
     lt=length(tvec);
     points=tvec+10;
     pointsy=.93*maxY;
@@ -189,7 +187,7 @@ if solvetype==2
     xlabel('Time (days since 1st Jan)','FontSize',fs);
     ylabel('Population','FontSize',fs);%yvar
     set(gca,'FontSize',fs);
-    axis ([0,tend,0,maxY])
+    axis tight%([0,tend,0,maxY])
     legend([h1,h2],'Incidence','Hospitalisations','location','NW')
     %
     if na==4
