@@ -15,6 +15,7 @@ hospThresh=[10^4,thresh2];
 %Tune epi-midel to pre-lockdown:
 [pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector);
 %%
+%
 G=[1962	-1022	-5	-30	0	0	-8	-5	-4	-3;
 -430	38558	-3199	-4783	-496	-358	-316	-980	-2944	-428;
 -21	-473	16041	-343	0	-303	-1817	-160	-508	-15;
@@ -26,8 +27,9 @@ G=[1962	-1022	-5	-30	0	0	-8	-5	-4	-3;
 -2	-140	-108	-248	-72	-187	-347	-482	39791	-14;
 -2	-16	-1	-6	-138	-107	-7	-57	-351	7210];
 b=[5318,147744,74405,184988,54354,72676,149844,77424,229146,39148];
-ball=repmat(b',numInt,1);
 objFun=[922,18515,8925,27340,9296,9765,22150,20185,26164,4914];%Monthly
+%}
+ball=repmat(b',numInt,1);
 objFun=repmat(objFun',numInt,1);
 %%
 %{
@@ -51,7 +53,7 @@ b2=[b';zeros(numSect,1)];
 lx=numInt*numSect;
 lb=zeros(lx,1);
 ub=ones(lx,1);
-X0=zeros(lx,1);
+X0=econ10.xmin;%zeros(lx,1);
 %}
 %%
 fun1=@(Xit)econGDP(objFun,Xit);

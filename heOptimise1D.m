@@ -1,4 +1,5 @@
 function f=heOptimise1D
+load('data1.mat','data1')
 t0=0;
 tend=720;
 months=[1,32,61,92,122,153,183,214,245,275,306,336,361,392,420,451,481];
@@ -14,7 +15,7 @@ NNsector=[sum(NNsector(1:lx));NNsector(lx+1:lx+lc)];
 hospThresh=[10^4,1];
 %%
 %Tune epi-midel to pre-lockdown:
-[pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector);%,.04,.0025);
+[pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector,data1);%,.04,.0025);
 %%
 lx=numInt;
 lb=zeros(lx,1);
@@ -22,7 +23,7 @@ ub=ones(lx,1);
 X0=zeros(lx,1);
 
 fun1=@(Xit)econGDP(Xit);
-nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh);
+nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,data1);
 options=optimoptions(@fmincon,'UseParallel',1,'MaxFunctionEvaluations',100000,'algorithm','interior-point');
 xoptim=fmincon(fun1,X0,[],[],[],[],lb,ub,nonlcon,options);
 
@@ -35,8 +36,8 @@ function f=econGDP(Xit)
 f=-sum(Xit);
 end
 
-function [c,cex]=epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh)
-[~,h]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,0);
+function [c,cex]=epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,data1)
+[~,h]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,data1);
 c=max(h-hospThresh);
 cex=[];
 end

@@ -25,6 +25,7 @@ if solvetype==2
     DEout=zeros(nbar,lt);
     Rout=DEout;
     Rt=zeros(lt-1,1);
+    HnewAll=[];
     for i=1:lt-1
         D=Dvec(:,:,i);
         tend=tvec(i+1);
@@ -41,12 +42,13 @@ if solvetype==2
         end
         %}
         %topen=1;%tvec(3);
-        [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i);
+        [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0,Hnew]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i);
         toutAll=[toutAll;tout(2:end)];
         Sout=[Sout;Sclass(2:end,:)];
         Hout=[Hout;Hclass(2:end,:)];
         Dout=[Dout;Dclass(2:end,:)];
         DEout(:,i)=DEcum;
+        HnewAll=[HnewAll;Hnew(2:end,:)];
         %Rout(:,i)=Rcum;
         Iout=[Iout;Itot(2:end,:)];
         t0=tend;
@@ -91,17 +93,35 @@ elseif solvetype==3
     error('Code not written yet')
     %f=stochSim(y0,beta,gamma,n,nbar,NN,NN0,D,seed,phi1,phi2,tau,alpha);
 end
+%%
+%Function outputs here:
 %For plots:
-f=sum(Dout,2);%Rt;%toutAll;%(2:end);
+%f=[toutAll,sum(Hout,2)];
+%f=[toutAll,HnewAll];
+f=Rt;%max(sum(Hout(toutAll>tvec(2),:)));%Rt
 %g=max(sum(Hout(toutAll>tvec(3),:),2));
-g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%sum(Rout(end,:))];%Rout+DEout;%sum(Hout,2);%-diff(sum(Sout,2))./diff(toutAll);
+g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%Main constraints
 %g=cumsum(Iout);
 %g=sum(Dout,2);
 end
 
-function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen)
+function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen)
 %ncomps=13;%Number of compartments
-    [tout,yout]=ode45(@(t,y)integr8covid(t,y,pr,beta,nbar,NN0,D,phi1,phi2,seedvec,topen),(t0:1:tend),y0);
+
+    %varPassedOut=0;
+    
+    fun=@(t,y)integr8covid(t,y,pr,beta,nbar,NN0,D,phi1,phi2,seedvec,topen);
+    [tout,yout]=ode45(fun,(t0:1:tend),y0);
+    
+    %{
+    Hnew=zeros(length(tout),nbar);
+    for i=1:length(tout)
+        [~,Hnewi]=fun(tout(i),yout(i,:)');
+        Hnew(i,:)=Hnewi';
+    end
+    %}
+    Hnew=0;
+    
     Sclass=yout(:,1:nbar);
     %{
     %HE:
@@ -206,27 +226,13 @@ if solvetype==2
 end
 end
 
-function f=integr8covid(t,y,pr,betaIn,nbar,NN0,D,phi1,phi2,seedvec,itime)
+function [f,g]=integr8covid(t,y,pr,betaIn,nbar,NN0,D,phi1,phi2,seedvec,itime)
 %phi=phi1-phi2*cos(pi*t/180);%Seasonality****
 phi=phi1;
 %%
 S=y(1:nbar);
 E=y(nbar+1:2*nbar);
 Ia=y(2*nbar+1:3*nbar);
-%{
-Ip=y(3*nbar+1:4*nbar);
-Inm=y(4*nbar+1:5*nbar);
-Ism=y(5*nbar+1:6*nbar);
-Ins=y(6*nbar+1:7*nbar);
-Iss=y(7*nbar+1:8*nbar);
-Qm=y(8*nbar+1:9*nbar);
-Qs=y(9*nbar+1:10*nbar);
-H=y(10*nbar+1:11*nbar);
-%H2=y(11*nbar+1:12*nbar);
-I=2/3*Ia+2/3*Ip+Inm+Ism+Ins+Iss;%All infectious
-%DE=y(10*nbar+1:11*nbar);
-%R=y(11*nbar+1:end);
-%}
 %
 %IC:
 Inm=y(3*nbar+1:4*nbar);
@@ -270,6 +276,8 @@ DEdot=pr.mu.*H;
 Rdot=pr.g1*Ia+pr.g2.*(Inm+Ism)+pr.g3.*H+pr.g4.*Qm+pr.gX.*(Ins+Iss);
 %f=[Sdot;Edot;Iadot;Ipdot;Inmdot;Ismdot;Insdot;Issdot;Qmdot;Qsdot;Hdot;DEdot;Rdot];
 f=[Sdot;Edot;Iadot;Inmdot;Ismdot;Insdot;Issdot;Qmdot;Qsdot;Hdot;DEdot;Rdot];
+
+g=pr.h.*(Ins+Iss+Qs);%Hin
 end
 
 %Stochastic variant - needs update to C19 flowchart
@@ -304,6 +312,20 @@ if sum(isnan(R))>0
     print('Somenting is NaN')
 end
 end
+%{
+Ip=y(3*nbar+1:4*nbar);
+Inm=y(4*nbar+1:5*nbar);
+Ism=y(5*nbar+1:6*nbar);
+Ins=y(6*nbar+1:7*nbar);
+Iss=y(7*nbar+1:8*nbar);
+Qm=y(8*nbar+1:9*nbar);
+Qs=y(9*nbar+1:10*nbar);
+H=y(10*nbar+1:11*nbar);
+%H2=y(11*nbar+1:12*nbar);
+I=2/3*Ia+2/3*Ip+Inm+Ism+Ins+Iss;%All infectious
+%DE=y(10*nbar+1:11*nbar);
+%R=y(11*nbar+1:end);
+%}
 %{
 %HE model:
 Iadot=(1-pr.p1)*pr.sigma*E-(1+pr.odds)*pr.g1*Ia;%2**

@@ -1,4 +1,4 @@
-function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotTau,data64)
+function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotTau,datax)%,pmod)
 %Inputs up to beta are outputs from hePrepCovid19
 %Xit - column vector with proportion of each sector open at each
 %intervention point. 
@@ -9,7 +9,7 @@ function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotT
 %to rendering loads of images! 
 isdual=1;
 solvetype=2;
-numseed=3;
+numseed=7;
 phi1=1; phi2=0;
 eps=0;
 randic=0;
@@ -113,19 +113,20 @@ NNmat=reshape(NNbar,n,na);%Include at home****
 NNworkSum=sum(NNmat(1:n-1,:),1);
 %}
 %Manually define populations during lockdown:
-NNvec=[NNbar,[NNbar(1:lx).*data64.xmin';NNbar(lx+1:lx+lc)],NNvec];
+NNvec=[NNbar,[NNbar(1:lx).*datax.xmin';NNbar(lx+1:lx+lc)],NNvec];
 %NNvec(lx+adInd,2)=sum(NNbar([1:lx,lx+adInd]));
 %NNfrac=NNvec(1:lx,2)./NNbar(1:lx,1);%Xit for lockdown
 NNvec(lx+adInd,2)=NNvec(lx+adInd,2)+sum(NNvec(1:lx,1)-NNvec(1:lx,2));
 %
+pr.betamod=[1,0.4476*ones(1,lt-2)];%repmat(1.1,1,6)];
+%pr.betamod=ones(1,lt-1);
 %
-pr.betamod=[1,.5,.5,.5,.5,.5,.5,.5];
 Dvec=repmat(D,[1,1,lt-1]);
-Dvec(:,:,2)=pr.betamod(2)*heMakeDs(NNvec(:,2),data64.xmin',data64,1);%,0); %NNfrac
+Dvec(:,:,2)=pr.betamod(2)*heMakeDs(NNvec(:,2),datax.xmin',datax,1);%,0); %NNfrac
 %if lt>3
 for i=3:lt-1
     %NNfrac=NNvec(1:end-1,i)./NNbar(1:end-1,1);
-    Dvec(:,:,i)=pr.betamod(i)*heMakeDs(NNvec(:,i),XitMat(:,i-2),data64,1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
+    Dvec(:,:,i)=pr.betamod(i)*heMakeDs(NNvec(:,i),XitMat(:,i-2),datax,1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
     %{
     %Toy example:
     factor=(i-2)/(lt-2);%Includes making lockdown matrix

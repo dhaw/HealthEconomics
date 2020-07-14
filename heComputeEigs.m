@@ -14,5 +14,5 @@ V(2*ntot+1:3*ntot,1:ntot)=diag(-pr.sigma*pr.p1*(1-pr.p2));
 %V(3*ntot+1:4*ntot,1:ntot)=diag(-pr.sigma*pr.p1*pr.p2*onesn);
 V(3*ntot+1:4*ntot,1:ntot)=diag(-pr.sigma*pr.p1*pr.p2);
 GD=F/V;
-f=eigs(GD);
+f=eigs(GD,1);
 f=beta*f(1);

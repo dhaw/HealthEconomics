@@ -1,10 +1,10 @@
-function f=heMakeDs(NN,x,data64,int)%NNfrac,x4)
+function f=heMakeDs(NN,x,datax,int)%NNfrac,x4)
 %NN - vector of populations including non-working. 
 %x - proportion of each sector open - not including non-working.
 lx=length(x);%Number of sectors
 %%
 %Size of C explicit in here
-background=data64.comm(1);
+background=datax.comm(1);
 C=[1.7112    0.4927    0.4049    0.0293;
     0.3919    2.5527    0.4753    0.0348;
     0.3234    0.5548    0.8996    0.0728;
@@ -50,11 +50,11 @@ elseif length(NN)==67
     matA(1:lx,lx+1:end)=repmat(CworkRow,lx,1);
     matA(:,[1:lx,lx+adInd])=repmat(matA(:,lx+adInd),1,lx+1).*repmat(NNrel',ln,1);
     %Make B and C:
-    valB=data64.B;
-    valC=data64.C;
+    valB=datax.B;
+    valC=datax.C;
     if int==1
-        valB=valB.*(1-data64.wfhAv);
-        valC=valC.*(1-data64.wfhAv);
+        valB=valB.*(1-datax.wfhAv);
+        valC=valC.*(1-datax.wfhAv);
     end
     valB(lx+1:ln)=0;
     valC(lx:1:ln)=0;
@@ -67,21 +67,27 @@ elseif length(NN)==67
     
     %Modify depending on x:
     %Education:
-    matA(lx+1,lx+1)=matA(lx+1,lx+1)+data64.schoolA1*x(55);
-    matA(lx+2,lx+2)=matA(lx+2,lx+2)+data64.schoolA2*x(55);
+    matA(lx+1,lx+1)=matA(lx+1,lx+1)+datax.schoolA1*x(55);
+    matA(lx+2,lx+2)=matA(lx+2,lx+2)+datax.schoolA2*x(55);
     %Hospitality:
     sects=[58,59,60,62];
-    psub=data64.NNsector(sects)';
+    psub=datax.NNsector(sects)';
     psub=sum(psub.*x(sects))/sum(psub);
-    matA([1:lx,lx+3:ln],:)=matA([1:lx,lx+3:ln],:)+NNrep([1:lx,lx+3:ln],:)+psub*data64.hospA34(1);
+    matA([1:lx,lx+3:ln],:)=matA([1:lx,lx+3:ln],:)+NNrep([1:lx,lx+3:ln],:)*psub*datax.hospA34(1);
+    matA(lx+2,:)=matA(lx+2,:)+NNrep(lx+2,:)*psub*datax.hospA2;%(1)
     %Transport:
     if int==0
-        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*data64.travelA3(1);
+        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*datax.travelA3(1);
     else
-        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*data64.travelA3(1).*repmat(1-data64.wfhAv,lx,1).*repmat(1-data64.wfhAv',1,lx);
+        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*datax.travelA3(1).*repmat(1-datax.wfhAv,lx,1).*repmat(1-datax.wfhAv',1,lx);
     end
     %
     f=matA+matB+matC;
+elseif length(NN)==5%Single sector
+    matA=zeros(lx+lc,lx+lc);
+    matA(lx+1:end,lx+1:end)=C;
+    matA(1:lx,lx+1:end)=repmat(CworkRow,lx,1);
+    matA(:,[1:lx,lx+adInd])=repmat(matA(:,lx+adInd),1,lx+1).*repmat(NNrel',lx+lc,1);
 end
 %{
 %Toy example:

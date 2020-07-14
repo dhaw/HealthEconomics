@@ -1,11 +1,11 @@
-function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,data64)%,R0)
+function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,datax)%,R0)
 %D - column vector or populations.
 %Possible generalsiation to within-sector heterogeneity - one column per
 %category. 
 lc=4;
 adInd=3;
 lx=length(D)-lc;
-%urbrur=0;%Turn in to @home vs @work
+%urbrur=0;%Turn in to @home vs @work7/291
 %%
 %Population density:
 [n,na]=size(D);
@@ -31,7 +31,7 @@ C=[.3827    0.9115    0.0419;
 %C=eye(na);
 
 %K=heMakeDs(NN,eye(10));
-D=heMakeDs(NN,ones(lx,1),data64,0);%,1);
+D=heMakeDs(NN,ones(lx,1),datax,0);%,1);
 
 %K=rand(n);
 %K=normr(K);
@@ -47,6 +47,7 @@ pili=[repmat(pili(adInd),lx,1);pili];
 ph=[0.0090,0.0152,0.2910,0.6738]';
 ph=[repmat(ph(adInd),lx,1);ph];
 pd=[0.0220,0.0220,0.0416,0.3514]';
+pd=pd/sum(pd);%New - so that 39% of hosp cases die
 pd=[repmat(pd(adInd),lx,1);pd];
 
 %toHosp=3;%Symp to hosp%****
@@ -66,8 +67,8 @@ pr.q2=0;
 %
 pr.h=ph/Tilih;%Vector
 pr.gX=(1-ph)/Tilih;%Vector
-pr.mu=pdeath/Thdeath;%Vector
-pr.g3=(1-pd)/Threc;%Vector
+pr.mu=pdeath*pd/Thdeath;%pdeath/Thdeath - without normalsiation pf pd; %Vector
+pr.g3=(1-pdeath*pd)/Threc;%(1-pd)/Threc - without normalsiation pf pd; %Vector
 %
 pr.g4=1/(1/pr.g2-1/pr.q1);
 if pr.q2>0
@@ -79,7 +80,7 @@ end
 pr.odds=0;
 pr.qnew=0;
 pr.red=2/3;
-pr.R0=1.6941;%R0;%2.7106;
+pr.R0=2.5;%1.6941;%R0;%2.7106;
 %%
 %isdual=1 - equivalent here
 %Ceff=kron(C,Ckron);%Urb/rural mixing here
