@@ -1,5 +1,5 @@
 function [f,g]=heSimCovid19(pr,beta,tvec,Dvec,n,nbar,NNvec,phi1,phi2,seedvec,S0,tau,plotTau)
-lx=63;
+lx=length(S0)-4;
 adInd=3;
 %{
 %Feed in to function - from prep
@@ -98,7 +98,7 @@ end
 %For plots:
 %f=[toutAll,sum(Hout,2)];
 %f=[toutAll,HnewAll];
-f=Rt;%max(sum(Hout(toutAll>tvec(2),:)));%Rt
+f=Rt;%max(sum(Hout,2));%Rt;%max(sum(Hout(toutAll>tvec(2),:)));%Rt
 %g=max(sum(Hout(toutAll>tvec(3),:),2));
 g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%Main constraints
 %g=cumsum(Iout);

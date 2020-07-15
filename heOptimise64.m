@@ -1,4 +1,4 @@
-function [xoptim,yoptim,exitflag]=heOptimise64%(NNsector,data64,econ64)
+function [xoptim,yoptim,exitflag]=heOptimise64%(xoptim)%(NNsector,data64,econ64)
 %%
 load('NNs64.mat','NNs64')
 NNsector=NNs64;
@@ -18,14 +18,24 @@ numAges=4;
 G=econ64.G;
 b=econ64.b;
 objFun=econ64.obj;%Monthly
-G(:,44)=G(:,44)+G(:,45);
-G(44,:)=G(44,:)+G(45,:);
+%G(:,44)=G(:,44)+G(:,45);
+%G(44,:)=G(44,:)+G(45,:);
 G(45,:)=[];
 G(:,45)=[];
-b(44)=b(44)+b(45);
+%b(44)=b(44)+b(45);
 b(45)=[];
-objFun(44)=objFun(44)+objFun(45);
+%objFun(44)=objFun(44)+objFun(45);
 objFun(45)=[];
+
+%data64.xmin=zeros(1,63);
+b(2)=0;%b(1);
+%
+objFun(2)=objFun(1);
+g1r=G(1,:);
+gc1=G(:,1);
+G(2,:)=g1r;
+G(:,2)=gc1;
+%}
 %%
 %Tune epi-midel to pre-lockdown:
 [pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector,data64);
@@ -36,24 +46,24 @@ objFun=repmat(objFun,numInt,1);
 Z2=[repmat(G,1,numInt);repmat(-G,1,numInt)];
 b2=[b;zeros(numSect,1)];
 lx=numInt*numSect;
-lb=repmat(data64.xmin',numInt,1);%zeros(lx,1);
+lb=zeros(lx,1);%repmat(data64.xmin',numInt,1);%zeros(lx,1);
 ub=ones(lx,1);
 X0=ones(lx,1);%repmat(data64.xmin',numInt,1);%zeros(lx,1);
 %%
-%
 fun1=@(Xit)econGDP(objFun,Xit);
 nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,data64);
+%{
 options=optimoptions(@fmincon,'MaxFunctionEvaluations',100000,'algorithm','interior-point');%'sqp' %'interior-point'
 [xoptim,yoptim,exitflag]=fmincon(fun1,X0,Z2,b2,[],[],lb,ub,[],options);%nonlcon
 %}
-%{
+%
 rng default % For reproducibility
-options=optimoptions(@fmincon,'MaxFunctionEvaluations',100000,'algorithm','interior-point','UseParallel',true);%best death timeseries from public ONS
-problem=createOptimProblem('fmincon','x0',X0,'objective',fun1,'Aineq',Z2,'bineq',b2,'lb',lb,'ub',ub,'nonlcon',nonlcon,'options',options);
+options=optimoptions(@fmincon,'MaxFunctionEvaluations',1000000,'algorithm','interior-point','UseParallel',true);%best death timeseries from public ONS
+problem=createOptimProblem('fmincon','x0',X0,'objective',fun1,'Aineq',Z2,'bineq',b2,'lb',lb,'ub',ub);%,'nonlcon',nonlcon,'options',options);
 ms=MultiStart;
-[xoptim,yoptim]=run(ms,problem,20);
+[xoptim,yoptim]=run(ms,problem,100);
 exitflag='Not relevant for ms';
-save('optimOut2.mat','xoptim','yoptim','exitflag')
+%save('optimOut2.mat','xoptim','yoptim','exitflag')
 %}
 %%
 save('optimOut.mat','xoptim','yoptim','exitflag')

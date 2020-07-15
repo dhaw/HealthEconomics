@@ -84,10 +84,44 @@ elseif length(NN)==67
     %
     f=matA+matB+matC;
 elseif length(NN)==5%Single sector
-    matA=zeros(lx+lc,lx+lc);
+    ln=length(NN);
+    NNrel=NN([1:lx,lx+adInd])/sum(NN([1:lx,lx+adInd]));
+    %Make A:
+    matA=zeros(ln,ln);
     matA(lx+1:end,lx+1:end)=C;
     matA(1:lx,lx+1:end)=repmat(CworkRow,lx,1);
-    matA(:,[1:lx,lx+adInd])=repmat(matA(:,lx+adInd),1,lx+1).*repmat(NNrel',lx+lc,1);
+    matA(:,[1:lx,lx+adInd])=repmat(matA(:,lx+adInd),1,lx+1).*repmat(NNrel',ln,1);
+    %Make B and C:
+    valB=datax.B;
+    valC=datax.C;
+    if int==1
+        valB=valB.*(1-datax.wfhAv);
+        valC=valC.*(1-datax.wfhAv);
+    end
+    valB(lx+1:ln)=0;
+    valC(lx:1:ln)=0;
+    %
+    x(lx+1:lx+lc,1)=0;
+    matB=diag(x.*valB');
+    matB(ln,ln)=0;
+    NNrep=repmat(NN'/sum(NN),lx+lc,1);
+    matC=repmat(x.*valC',1,ln).*NNrep;
+    
+    %Modify depending on x:
+    %Education:
+    matA(lx+1,lx+1)=matA(lx+1,lx+1)+datax.propschools*datax.schoolA1*x(1);
+    matA(lx+2,lx+2)=matA(lx+2,lx+2)+datax.propschools*datax.schoolA2*x(1);
+    %Hospitality:
+    matA([1:lx,lx+3:ln],:)=matA([1:lx,lx+3:ln],:)+NNrep([1:lx,lx+3:ln],:)*datax.prophosp*datax.hospA34;
+    matA(lx+2,:)=matA(lx+2,:)+NNrep(lx+2,:)*datax.prophosp*datax.hospA2;%(1)
+    %Transport:
+    if int==0
+        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*datax.travelA3(1);
+    else
+        matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*datax.travelA3(1).*repmat(1-datax.wfhAv,lx,1).*repmat(1-datax.wfhAv',1,lx);
+    end
+    %
+    f=matA+matB+matC;
 end
 %{
 %Toy example:

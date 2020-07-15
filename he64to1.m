@@ -20,12 +20,14 @@ NNs64sum=sum(NNs64);
 propA2=NNs64(65)/NNs64sum;
 propA3=sum(NNs64([1:63,66]))/NNs64sum;
 propA4=NNs64(67)/NNs64sum;
-data1.travel=data64.travelA3(1)*propA3;
-data1.hosp=data64.hospA2*propA2+data64.hospA34*(propA3+propA4);
+data1.travelA3=data64.travelA3(1);%*propA3;
+%data1.hosp=data64.hospA2*propA2+data64.hospA34*(propA3+propA4);
+data1.hospA2=data64.hospA2;
+data1.hospA34=data64.hospA34(1);
 
 data1.schoolA1=data64.schoolA1;
 data1.schoolA2=data64.schoolA2;
-data1.prophosp=data64.NNsector([58,59,60,62])/NNsum;
+data1.prophosp=sum(data64.NNsector([58,59,60,62]))/NNsum;
 data1.propschools=data64.NNsector(55)/NNsum;
 
 f=data1;

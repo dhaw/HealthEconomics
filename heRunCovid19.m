@@ -7,6 +7,7 @@ function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotT
 %plotTau=1 to plot output. 
 %Note: this is set to 0 in any optimisation protocol to avoid a crash due
 %to rendering loads of images! 
+pmod=.4;
 isdual=1;
 solvetype=2;
 numseed=7;
@@ -118,7 +119,7 @@ NNvec=[NNbar,[NNbar(1:lx).*datax.xmin';NNbar(lx+1:lx+lc)],NNvec];
 %NNfrac=NNvec(1:lx,2)./NNbar(1:lx,1);%Xit for lockdown
 NNvec(lx+adInd,2)=NNvec(lx+adInd,2)+sum(NNvec(1:lx,1)-NNvec(1:lx,2));
 %
-pr.betamod=[1,0.4476*ones(1,lt-2)];%repmat(1.1,1,6)];
+pr.betamod=[1,pmod*ones(1,lt-2)];%repmat(1.1,1,6)];
 %pr.betamod=ones(1,lt-1);
 %
 Dvec=repmat(D,[1,1,lt-1]);
