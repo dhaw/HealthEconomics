@@ -3,7 +3,7 @@ load('NNs1.mat','NNs1')
 NNsector=NNs1;
 load('data1.mat','data1')
 %
-t0=-44.1830;
+t0=-60;%-44.1830;
 tend=720;
 months=[1,32,61,92,122,153,183,214,245,275,306,336,361,392,420,451,481];
 tvec=[t0,months(4:11)];%Fit tvec(1)=t0 %11
@@ -25,7 +25,7 @@ hospThresh=[2000,1];
 lx=numInt;
 lb=zeros(lx,1);
 ub=ones(lx,1);
-X0=.5*repmat(data1.xmin,6,1);%zeros(lx,1);
+X0=repmat(data1.xmin,6,1);%zeros(lx,1);
 %%
 fun1=@(Xit)econGDP(Xit);
 nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,data1);

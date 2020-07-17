@@ -97,8 +97,8 @@ end
 %Function outputs here:
 %For plots:
 %f=[toutAll,sum(Hout,2)];
-%f=[toutAll,HnewAll];
-f=Rt;%max(sum(Hout,2));%Rt;%max(sum(Hout(toutAll>tvec(2),:)));%Rt
+f=[toutAll(toutAll>0),sum(HnewAll(toutAll>0,:),2)];
+%f=Rt;%max(sum(Hout,2));%Rt;%max(sum(Hout(toutAll>tvec(2),:)));%Rt
 %g=max(sum(Hout(toutAll>tvec(3),:),2));
 g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%Main constraints
 %g=cumsum(Iout);
@@ -111,17 +111,17 @@ function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,
     %varPassedOut=0;
     
     fun=@(t,y)integr8covid(t,y,pr,beta,nbar,NN0,D,phi1,phi2,seedvec,topen);
-    [tout,yout]=ode45(fun,(t0:1:tend),y0);
-    
-    %{
+    [tout,yout]=ode45(fun,(round(t0):1:tend),y0);
+    %%
+    %
     Hnew=zeros(length(tout),nbar);
     for i=1:length(tout)
         [~,Hnewi]=fun(tout(i),yout(i,:)');
         Hnew(i,:)=Hnewi';
     end
     %}
-    Hnew=0;
-    
+    %Hnew=0;
+    %%
     Sclass=yout(:,1:nbar);
     %{
     %HE:

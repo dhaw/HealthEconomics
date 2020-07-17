@@ -7,7 +7,7 @@ function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotT
 %plotTau=1 to plot output. 
 %Note: this is set to 0 in any optimisation protocol to avoid a crash due
 %to rendering loads of images! 
-pmod=.4;
+pmod=0.5635;
 isdual=1;
 solvetype=2;
 numseed=7;
@@ -127,7 +127,7 @@ Dvec(:,:,2)=pr.betamod(2)*heMakeDs(NNvec(:,2),datax.xmin',datax,1);%,0); %NNfrac
 %if lt>3
 for i=3:lt-1
     %NNfrac=NNvec(1:end-1,i)./NNbar(1:end-1,1);
-    Dvec(:,:,i)=pr.betamod(i)*heMakeDs(NNvec(:,i),XitMat(:,i-2),datax,1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
+    Dvec(:,:,i)=pr.betamod(i)*heMakeDs(NNvec(:,i),XitMat(:,i-2),datax,i-1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too
     %{
     %Toy example:
     factor=(i-2)/(lt-2);%Includes making lockdown matrix

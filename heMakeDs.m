@@ -4,7 +4,13 @@ function f=heMakeDs(NN,x,datax,int)%NNfrac,x4)
 lx=length(x);%Number of sectors
 %%
 %Size of C explicit in here
-background=datax.comm(1);
+if int==0
+    background=datax.comm(1);
+elseif int==1
+    background=datax.comm(1);
+else
+    background=datax.comm(1);
+end
 C=[1.7112    0.4927    0.4049    0.0293;
     0.3919    2.5527    0.4753    0.0348;
     0.3234    0.5548    0.8996    0.0728;
@@ -52,7 +58,7 @@ elseif length(NN)==67
     %Make B and C:
     valB=datax.B;
     valC=datax.C;
-    if int==1
+    if int>0
         valB=valB.*(1-datax.wfhAv);
         valC=valC.*(1-datax.wfhAv);
     end
@@ -94,7 +100,7 @@ elseif length(NN)==5%Single sector
     %Make B and C:
     valB=datax.B;
     valC=datax.C;
-    if int==1
+    if int>0
         valB=valB.*(1-datax.wfhAv);
         valC=valC.*(1-datax.wfhAv);
     end

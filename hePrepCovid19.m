@@ -1,4 +1,4 @@
-function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,datax)%,R0)
+function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,datax,R0)
 %D - column vector or populations.
 %Possible generalsiation to within-sector heterogeneity - one column per
 %category. 
@@ -80,7 +80,7 @@ end
 pr.odds=0;
 pr.qnew=0;
 pr.red=2/3;
-pr.R0=2.5;%1.6941;%R0;%2.7106;
+pr.R0=2.6231;%3;%2.5;%1.6941;%R0;%2.7106;
 %%
 %isdual=1 - equivalent here
 %Ceff=kron(C,Ckron);%Urb/rural mixing here
