@@ -1,13 +1,14 @@
-function [xoptim,yoptim,exitflag]=heOptimise64(xoptim)%(NNsector,data64,econ64)
+function [xoptim,yoptim,exitflag]=heOptimise64%(xoptim)%(NNsector,data64,econ64)
 %%
 load('NNs64.mat','NNs64')
 NNsector=NNs64;
-load('data64.mat','data64')
-load('econ64.mat','econ64')
+load('ddata64.mat','ddata64')
+load('eecon64.mat','eecon64')
 %%
-hospThresh=[10^4,1];
-t0=-63.2184;
-t1=86.7788;
+hospThresh=[38172,1];%38172	53365	74966	82966
+
+t0=-49.7725;%-53.8370;
+t1=86.3881;%87.1771;
 tend=720;
 months=[1,32,61,92,122,153,183,214,245,275,306,336,361,392,420,451,481,tend];
 tvec=[t0,t1,months(5:11)];%Fit tvec(1)=t0 %11
@@ -16,12 +17,12 @@ numInt=length(tvec)-3;
 numAges=4;
 %%
 %NNsector=data64.NNsector;
-G=econ64.G;
-b=econ64.b;
-objFun=econ64.obj;%Monthly
+G=eecon64.G;
+b=eecon64.b;
+objFun=eecon64.obj;%Monthly
 %%
 %Tune epi-midel to pre-lockdown:
-[pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector,data64);
+[pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector,ddata64);
 numSect=length(NNsector)-numAges;
 objFun=repmat(objFun,numInt,1);
 %%
@@ -29,12 +30,20 @@ objFun=repmat(objFun,numInt,1);
 Z2=[repmat(G,1,numInt);repmat(-G,1,numInt)];
 b2=[b+1e-6;zeros(numSect,1)];
 lx=numInt*numSect;
-lb=zeros(lx,1);%repmat(data64.xmin',numInt,1);%zeros(lx,1);
+lb=repmat(ddata64.xmin',numInt,1);%zeros(lx,1);
 ub=ones(lx,1);
-X0=repmat(data64.xmin',numInt,1);%zeros(lx,1);
+X0=repmat(ddata64.xmin',numInt,1);%zeros(lx,1);
+%{
+%Schools open fully in last 2 months:
+xlb=repmat(ddata64.xmin',numInt,1);
+xlb(4*63+55,1)=1;
+xlb(5*63+55,1)=1;
+lb=xlb;
+X0=xlb;%repmat(xlb',numInt,1);%zeros(lx,1);
+%}
 %%
 fun1=@(Xit)econGDP(objFun,Xit);
-nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,data64);
+nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,ddata64);
 %{
 options=optimoptions(@fmincon,'MaxFunctionEvaluations',100000,'MaxIterations',10000000,'algorithm','interior-point');%'sqp' %'interior-point'
 [xoptim,yoptim,exitflag]=fmincon(fun1,X0,Z2,b2,[],[],lb,ub,nonlcon,options);
@@ -42,7 +51,7 @@ options=optimoptions(@fmincon,'MaxFunctionEvaluations',100000,'MaxIterations',10
 %}
 %
 rng default % For reproducibility
-options=optimoptions(@fmincon,'MaxFunctionEvaluations',1000000,'MaxIterations',10000000,'algorithm','interior-point','UseParallel',true);%best death timeseries from public ONS
+options=optimoptions(@fmincon,'MaxFunctionEvaluations',200000,'MaxIterations',200000,'algorithm','interior-point','UseParallel',true);%best death timeseries from public ONS
 problem=createOptimProblem('fmincon','x0',X0,'objective',fun1,'Aineq',Z2,'bineq',b2,'lb',lb,'ub',ub,'nonlcon',nonlcon,'options',options);
 %problem=createOptimProblem('fmincon','x0',X0,'objective',fun1,'Aineq',Z2,'bineq',b2,'lb',lb,'ub',ub,'nonlcon',[],'options',options);
 ms=MultiStart;
@@ -58,8 +67,8 @@ function f=econGDP(obj,Xit)%,lx)
 f=-sum(obj.*Xit);
 end
 
-function [c,cex]=epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,data64)
-[~,h]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,0,data64);
+function [c,cex]=epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,ddata64)
+[~,h]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,0,ddata64);
 c=max(h-hospThresh);
 cex=[];
 end

@@ -1,0 +1,1 @@
+mcc('-m', 'heOptimise64.m', 'heComputeEigs.m', 'heMakeDs.m', 'hePrepCovid19.m', 'heRunCovid19.m', 'heSimCovid19.m', '-a', 'C:\Program Files\MATLAB\R2020a\toolbox*')

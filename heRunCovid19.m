@@ -2,12 +2,23 @@ function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotT
 %Inputs up to beta are outputs from hePrepCovid19
 %Xit - column vector with proportion of each sector open at each
 %intervention point. 
-%tvec - vector of time points including tvev(1)=t0, tvec(2)=lockdown staet,
+%tvec - vector of time points including tvev(1)=t0, tvec(2)=lockdown start,
 %tvec(end)=end of simulation. 
 %plotTau=1 to plot output. 
 %Note: this is set to 0 in any optimisation protocol to avoid a crash due
-%to rendering loads of images! 
-pmod=0.5635;
+%to rendering loads of images!
+%
+pmod=0.5602;% .6041;%10s .588;%64s
+lt=length(tvec);
+pr.betamod=[1,pmod,pmod*ones(1,lt-3)];
+%
+betamodmax=.8;
+pinc=(betamodmax-pmod)/6;
+pr.betamod=[1,pmod,pmod+pinc:pinc:betamodmax];
+%}
+%pr.betamod=ones(1,lt-1);
+%pr.betamod=[1,pmod,betamodmax*ones(1,lt-3)];
+%
 isdual=1;
 solvetype=2;
 numseed=7;
@@ -37,7 +48,7 @@ y0in=sum(y0in,1)';
 demog=1;
 %plotTau=0;
 time=(1:tauend);
-lt=length(time);
+%ltime=length(time);
 t0=0; tend=366;
 %mu=1/80;%In ODE code
 phi1=1; phi2=0;
@@ -99,7 +110,7 @@ Dvec=D;
 %tvec=[-180,92,122,153,183,tend];%,214,366];%245,275,306,336,tend];
 lc=4;%*age
 adInd=3;%Age group of adults *age
-lt=length(tvec);
+%lt=length(tvec);
 lx=length(Xit)/(lt-3);%Number of sectors
 XitMat=reshape(Xit,lx,lt-3);
 NNvec=repmat(NNbar(1:lx),1,lt-3).*XitMat;%Assumes pre-lockdown=fully open
@@ -119,12 +130,13 @@ NNvec=[NNbar,[NNbar(1:lx).*datax.xmin';NNbar(lx+1:lx+lc)],NNvec];
 %NNfrac=NNvec(1:lx,2)./NNbar(1:lx,1);%Xit for lockdown
 NNvec(lx+adInd,2)=NNvec(lx+adInd,2)+sum(NNvec(1:lx,1)-NNvec(1:lx,2));
 %
-pr.betamod=[1,pmod*ones(1,lt-2)];%repmat(1.1,1,6)];
-%pr.betamod=ones(1,lt-1);
-%
 Dvec=repmat(D,[1,1,lt-1]);
 Dvec(:,:,2)=pr.betamod(2)*heMakeDs(NNvec(:,2),datax.xmin',datax,1);%,0); %NNfrac
 %if lt>3
+
+%To test attack rates etc:
+%Dvec(:,:,1)=pr.betamod(1)*heMakeDs(NNvec(:,1),ones(lx,1),datax,0);
+
 for i=3:lt-1
     %NNfrac=NNvec(1:end-1,i)./NNbar(1:end-1,1);
     Dvec(:,:,i)=pr.betamod(i)*heMakeDs(NNvec(:,i),XitMat(:,i-2),datax,i-1);%NNfrac,Xit((i-3)*nbar+4));%Can reduce contact rates here too

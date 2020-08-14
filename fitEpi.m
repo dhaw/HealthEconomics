@@ -3,13 +3,13 @@ function f=fitEpi(NNsectorAges,ydata,datax)
 %hePrepCovid19 - feed in R0
 %heSimCovid19 - output deaths
 %wend=11;
-xdata=(41:121)';%(1:wend)';
+xdata=(41:152)';%(1:wend)';
 %ydata=cumsum(ydata(1:wend));
 %v7=(5:7:wend*7-2)';
 %
-x0=[.5,0,92,3.5];%pmod,t0
-lb=[0,-100,0,2.5];
-ub=[1,100,150,5];
+x0=[.3,0,83,3];%pmod,t0 %0
+lb=[0,-100,0,2.5];%50
+ub=[1,91,92,3.5];%92
 %}
 %{
 x0=0;
@@ -38,7 +38,7 @@ f=poptim;
 end
 
 function f=sim2fit(NNsectorAges,params,datax)%,v7
-tvec=[params(2),params(3),122,123];%78,79,80];%80=last day of interest
+tvec=[params(2),params(3),153,154];%78,79,80];%80=last day of interest params(3) -> 83  122,123
 %tvec=[params,78,79,80];%82,83,84];%80=last day of interest
 %tvec=[-44.3012,78,79,80];%82,83,84];%80=last day of interest
 [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(NNsectorAges,datax,params(4));
@@ -49,5 +49,5 @@ if simu(1,2)>1
 else
     simu=simu(:,2);
 end
-f=simu(41:121);%(v7);%Cumulative deaths
+f=simu(41:152);%(v7);%Cumulative deaths
 end
