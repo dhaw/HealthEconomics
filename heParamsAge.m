@@ -1,4 +1,7 @@
 function [piligs,phgili,pdgh]=heParamsAge%(tab)
+%P(ILI | symptomatic)?
+%P(H | ILI)
+%P(D | H)
 %Then hard code outputs into prep file!
 %%
 %Work in row vectors

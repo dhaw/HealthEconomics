@@ -1,10 +1,13 @@
 function [NNs10,data10]=he64to10(NNs64,data64,agg)
+%Everything a row vector - except agg
 data10=struct;
 data10.NNsector=accumarray(agg,data64.NNsector')';
 [freq,~]=groupcounts(agg);
 tots=repelem(data10.NNsector',freq);
 props=data64.NNsector'./tots;
 NNs10=[data10.NNsector';NNs64(64:end)];
+
+data10.xmin=accumarray(agg,data64.xmin'.*props)';
 
 %Need A,B,ctt,WFH,furl,pre
 

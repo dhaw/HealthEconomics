@@ -1,4 +1,5 @@
 function [f,g]=heSimCovid19(pr,beta,tvec,Dvec,n,nbar,NNvec,phi1,phi2,seedvec,S0,tau,plotTau)
+hospInc=1;
 lx=length(S0)-4;
 adInd=3;
 %{
@@ -42,8 +43,10 @@ if solvetype==2
         end
         %}
         %topen=1;%tvec(3);
-        Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,y0(1:lx+4));
-        [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0,Hnew]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i);
+        if hospInc==1
+            Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,y0(1:lx+4));
+        end
+        [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0,Hnew]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i,hospInc);
         toutAll=[toutAll;tout(2:end)];
         Sout=[Sout;Sclass(2:end,:)];
         Hout=[Hout;Hclass(2:end,:)];
@@ -57,7 +60,12 @@ if solvetype==2
         %HE:
         %Calculate in advance?
         %Need to add age structure in here - only uses n, not na****
-        %Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,Sclass(end,:)');
+        %
+        Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,Sclass(end,:)');
+        if hospInc~=1
+            Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,y0(1:lx+4));
+        end
+        %
         if i<lt-1
             Xh2w=NNvec(1:lx,i+1)-NNvec(1:lx,i);%Addition to each wp next intervention step
             Xw2h=-Xh2w; Xw2h(Xw2h<0)=0; 
@@ -97,16 +105,23 @@ end
 %%
 %Function outputs here:
 %For plots:
-f=[toutAll(toutAll>0),sum(Sout(toutAll>0,:),2),sum(Hout(toutAll>0,:),2)];
-%f=[toutAll(toutAll>0),sum(HnewAll(toutAll>0,:),2)];
-%f=Rt;%max(sum(Hout,2));%Rt;%max(sum(Hout(toutAll>tvec(2),:)));%Rt
-%g=max(sum(Hout(toutAll>tvec(3),:),2));
+if hospInc==2%****
+    %f=max(Rt(3:end));
+    %f=[toutAll(toutAll>0),sum(HnewAll(toutAll>0,:),2)];
+    f=Rt;%[toutAll(toutAll>0),HnewAll(toutAll>0,:)];
+else
+    %f=[toutAll(toutAll>0),sum(Hout(toutAll>0,:),2)];
+    f=[toutAll(toutAll>0),sum(Sout(toutAll>0,:),2),sum(Hout(toutAll>0,:),2)];%sum(DEout(end,:));%
+    %f=Rt;%max(sum(Hout,2));%Rt;%max(sum(Hout(toutAll>tvec(2),:)));%Rt
+    %g=max(sum(Hout(toutAll>tvec(3),:),2));
+end
 g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%Main constraints
 %g=cumsum(Iout);
-%g=sum(Dout,2);
+%g=sum(Dout(end,:),2);
+g=sum(sum(HnewAll(toutAll>tvec(3),:)));
 end
 
-function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen)
+function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen,hospInc)
 %ncomps=13;%Number of compartments
 
     %varPassedOut=0;
@@ -116,15 +131,15 @@ function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,
     %%
     %
     %For fit:
-    %{
-    Hnew=zeros(length(tout),nbar);
-    for i=1:length(tout)
-        [~,Hnewi]=fun(tout(i),yout(i,:)');
-        Hnew(i,:)=Hnewi';
+    if hospInc==1
+        Hnew=zeros(length(tout),nbar);
+        for i=1:length(tout)
+            [~,Hnewi]=fun(tout(i),yout(i,:)');
+            Hnew(i,:)=Hnewi';
+        end
+    else
+        Hnew=0;
     end
-    %}
-    %If not fitting (for speed):
-    Hnew=0;
     %%
     Sclass=yout(:,1:nbar);
     %{
@@ -201,18 +216,22 @@ if solvetype==2
     semilogy(tout,Yall);
     %}
     lt=length(tvec);
-    points=tvec+10;
+    points=[0,tvec(2:end)]+10;
     pointsy=.93*maxY;
-    txt={'1','2','3','4','5','6'};
-    for i=3:lt-1
-        text(points(i),pointsy,txt{i-2},'fontsize',20)
+    txt={'PRE','LD','1','2','3','4','5','6'};
+    for i=1:lt-1
+        text(points(i),pointsy,txt{i},'fontsize',20)
     end
     
-    xlabel('Time (days since 1st Jan)','FontSize',fs);
+    xlabel('Time','FontSize',fs);
     ylabel('Population','FontSize',fs);%yvar
     set(gca,'FontSize',fs);
-    axis tight%([0,tend,0,maxY])
-    legend([h1,h2],'Inc.','HC','location','NW')
+    axis([0,tend,0,maxY])
+    
+    xticks([1,32,61,92,122,153,183,214,245,275,306,336,367,398])
+    xticklabels({'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb'})
+    
+    legend([h1,h2],'Inc.','HO','location','W')
     %
     if na==4
         legend(h,{'0-4','5-19','20-64','65+'},'location','NE')

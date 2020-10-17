@@ -1,4 +1,9 @@
 function f=heMakeDs(NN,x,datax,int)%NNfrac,x4)
+
+if int==1
+    datax.schoolA2=datax.schoolA2*1;
+end
+
 %NN - vector of populations including non-working.
 %x - proportion of each sector open - not including non-working.
 lx=length(x);%Number of sectors
@@ -12,7 +17,7 @@ else
     background=datax.comm(1);
 end
 C=[1.7112    0.4927    0.4049    0.0293;
-    0.3919    2.5527    0.4753    0.0348;
+    0.3919    2.5527    0.4753    0.0348;%*.6078 from fluCode work
     0.3234    0.5548    0.8996    0.0728;
     0.0528    0.1904    0.3744    0.3830];
 %C=C*data64.comm(1)/mean(mean(C));%Match community transmission
@@ -20,7 +25,7 @@ C=[1.7112    0.4927    0.4049    0.0293;
 adInd=3;%Adult index
 %
 lc=length(C);
-C=C*background/sum(C(3,:));
+C=C*background/2.0284;%Weighted average? %sum(C(3,:));
 CworkRow=C(3,:);
 %%
 %if length(NN)==lc+1%*1Dage
@@ -144,7 +149,9 @@ elseif length(NN)==5%Single sector
     matA(lx+1,lx+1)=matA(lx+1,lx+1)+datax.propschools*datax.schoolA1*x(1);
     matA(lx+2,lx+2)=matA(lx+2,lx+2)+datax.propschools*datax.schoolA2*x(1);
     %Hospitality:
-    matA([1:lx,lx+3:ln],:)=matA([1:lx,lx+3:ln],:)+NNrep([1:lx,lx+3:ln],:)*datax.prophosp*datax.hospA34;
+    %matA([1:lx,lx+3:ln],:)=matA([1:lx,lx+3:ln],:)+NNrep([1:lx,lx+3:ln],:)*datax.prophosp*datax.hospA34;
+    matA([1:lx,lx+3],:)=matA([1:lx,lx+3],:)+NNrep([1:lx,lx+3],:)*datax.prophosp*datax.hospA3;
+    matA(ln,:)=matA(ln,:)+NNrep(ln,:)*datax.prophosp*datax.hospA4;
     matA(lx+2,:)=matA(lx+2,:)+NNrep(lx+2,:)*datax.prophosp*datax.hospA2;%(1)
     %Transport:
     if int==0

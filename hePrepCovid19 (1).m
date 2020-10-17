@@ -1,13 +1,12 @@
-function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,datax)%,R0)
+function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D)%,hvec,muvec)
 %D - column vector or populations.
 %Possible generalsiation to within-sector heterogeneity - one column per
-%category.
-pr=struct;
-pr.R0=2.7274;%2.7297;%ons 3.0241;%1s %2.8109;%64s
-lc=4;
-adInd=3;
-lx=length(D)-lc;
-%urbrur=0;%Turn in to @home vs @work7/291
+%category. 
+%hvec - hospitalisations by age group. 
+%muvec - deaths by age group. 
+%Currently 1 age group, so hvec and muvec are scalars. 
+
+urbrur=0;%Turn in to @home vs @work
 %%
 %Population density:
 [n,na]=size(D);
@@ -30,58 +29,51 @@ C=[.3827    0.9115    0.0419;
     1.2062    7.3538    0.1235;
     0.1459    0.4810    0.1860];
 %}
-%C=eye(na);
+C=eye(na);
 
 %K=heMakeDs(NN,eye(10));
-D=heMakeDs(NN,ones(lx,1),datax,0);%,1);
+K=heMakeDs(NN,ones(length(NN)-1,1));%,1);
 
 %K=rand(n);
 %K=normr(K);
-%D=kron(C,K);
+D=kron(C,K);
 %%
-%Hard code from heParamsAge:
-Tilih=5;
-Thdeath=10.81;%Median 8
-Threc=12.73;%Median 9
-pdeath=.39;
-pili=[0.4670,0.4786,0.6590,0.7252]';
-pili=[repmat(pili(adInd),lx,1);pili];
-ph=[0.0090,0.0152,0.2910,0.6738]';
-ph=[repmat(ph(adInd),lx,1);ph];
-pd=[0.0220,0.0220,0.0416,0.3514]';
-pd=pd/sum(pd);%New - so that 39% of hosp cases die
-pd=[repmat(pd(adInd),lx,1);pd];
-
 %toHosp=3;%Symp to hosp%****
-Text=4.6;
+propHospGivenInf=.04;
+Ttohosp=4;
+Thosp=5;%In hosp****
+Text=4.59;%4.6
 Tonset=1;
+pr=struct;
 pr.sigma=1/Text;
 pr.omega=1/Tonset;
 pr.g1=1/2.1;
 pr.g2=1/2.1;
+pr.g3=1/Thosp;%****
+pr.gX=1/4;
 pr.p1=1-.34;
-pr.p2=.505*pili;%Vector
+pr.p2=.505;%.04; hvec;
 pr.p3=1;
 pr.p4=1;
 pr.q1=0;
 pr.q2=0;
 %
-pr.h=ph/Tilih;%Vector
-pr.gX=(1-ph)/Tilih;%Vector
-pr.mu=pdeath*pd/Thdeath;%pdeath/Thdeath - without normalsiation pf pd; %Vector
-pr.g3=(1-pdeath*pd)/Threc;%(1-pd)/Threc - without normalsiation pf pd; %Vector
+pr.g4=1/(1/pr.g2-1/pr.q1);%~q's and other gammaspr.p1=1-.34;
+pr.g4X=1/(1/pr.gX+1/pr.q2);
 %
-pr.g4=1/(1/pr.g2-1/pr.q1);
-if pr.q2>0
-    pr.g4X=1/(1./pr.gX+1./pr.q2);%Vector
-else
-    pr.g4X=pr.q2*0;
-end
-%
+ph=propHospGivenInf/pr.p1/pr.p2;%proportion of severe that are hospitalised%****
+pr.h=ph/(1-ph);%1/toHosp;
+pr.mu=.0025/.04;%muvec;
 pr.odds=0;
 pr.qnew=0;
-pr.red=2/3;
-%pr.R0=2.7567;%1s %2.7457;%64s
+pr.red=2/3;%****
+pr.R0=2.5;%****
+%%
+%Debug stuff:
+%hvec=zeros(nbar,1);
+%gammaEff=(1-pr.p1)*pr.g1*ones(na*n,1)+pr.p1*((1-pr.h)*pr.g2+hvec*pr.p2);
+%Vinv=diag(1./gammaEff);
+%
 %%
 %isdual=1 - equivalent here
 %Ceff=kron(C,Ckron);%Urb/rural mixing here
@@ -93,15 +85,11 @@ onesn=ones(ntot,1);
 F=zeros(4*ntot,4*ntot);
 %F(1:ntot,1:ntot)=Deff;
 F(1:ntot,ntot+1:end)=[pr.red*Deff,repmat(Deff,1,2)];
-%vvec=kron([pr.sigma;pr.g1;pr.g2;pr.gX],ones(ntot,1));
-%vvec(end-ntot+1:end)=vvec(end-ntot+1:end)+pr.h;
-vvec=[pr.sigma*onesn;pr.g1*onesn;pr.g2*onesn;pr.gX+pr.h];
+vvec=kron([pr.sigma;pr.g1;pr.g2;pr.gX+pr.h],ones(ntot,1));
 V=diag(vvec);
 V(ntot+1:2*ntot,1:ntot)=diag(-pr.sigma*(1-pr.p1)*onesn);
-%V(2*ntot+1:3*ntot,1:ntot)=diag(-pr.sigma*pr.p1*(1-pr.p2)*onesn);
-V(2*ntot+1:3*ntot,1:ntot)=diag(-pr.sigma*pr.p1*(1-pr.p2));
-%V(3*ntot+1:4*ntot,1:ntot)=diag(-pr.sigma*pr.p1*pr.p2*onesn);
-V(3*ntot+1:4*ntot,1:ntot)=diag(-pr.sigma*pr.p1*pr.p2);
+V(2*ntot+1:3*ntot,1:ntot)=diag(-pr.sigma*pr.p1*(1-pr.p2)*onesn);
+V(3*ntot+1:4*ntot,1:ntot)=diag(-pr.sigma*pr.p1*pr.p2*onesn);
 GD=F/V;
 %{
 %HE:

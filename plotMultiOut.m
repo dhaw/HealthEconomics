@@ -51,11 +51,15 @@ for i=3:8%lt-1
     text(points(i),pointsy,txt{i-2},'fontsize',20)
 end
 
-xlabel('Time (days since 1st Jan)','FontSize',fs);
+xlabel('Time','FontSize',fs);
 ylabel('Population','FontSize',fs);%yvar
 set(gca,'FontSize',fs);
 axis ([0,tvec(end),0,maxY])
-legend([hh1,hh2,hh3,hh4],'Inc. (mitigated)','HC (mitigated)','Inc. (unmitigated)','HC (unmitigated)','location','west')
+
+xticks([1,32,61,92,122,153,183,214,245,275,306,336,367,398])
+xticklabels({'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb'})
+
+legend([hh1,hh2,hh3,hh4],'Inc. (mitigated)','HO (mitigated)','Inc. (unmitigated)','HO (unmitigated)','location','west')
 %legend([hh1,hh2,hh3,hh4],'Inc. (xmin)','HC (xmin)','Inc. (open)','HC (open)','location','west')
 grid on
 grid minor
