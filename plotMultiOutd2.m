@@ -1,4 +1,4 @@
-function f=plotMultiOutd(f1,x1,tvec,ddatax)
+function f=plotMultiOutd2(f1,x1,tvec,ddatax)
 numPeriods=5;
 numSectors=length(x1)/(numPeriods-2);
 lt=length(tvec);
@@ -53,6 +53,10 @@ elseif numPeriods==5
 else
     error('Data missing for nunmPeriods')
 end
+tp=0:numPeriods;%[0,tvec(2:end)];
+%tc=tp(1:end-1)+.5*diff(tp);
+%xc=.5:1:numSectors;
+[tc,xc]=meshgrid(tp(1:end),(0:63));
 
 legend([hh1,hh2],'Inc.','Hosp. occ.','location','west')
 %legend([hh1,hh2,hh3,hh4],'Inc. (xmin)','HC (xmin)','Inc. (open)','HC (open)','location','west')
@@ -75,7 +79,7 @@ if numSectors==10
     %colormap gray
     imagesc([0,tvec(2:end)],0:numSectors,x)
     set(gca,'YDir','normal')
-    xlabel('Period')
+    xlabel('Time')
     ylabel('Sector')
     set(gca,'fontsize',fs,'xtick',[0,tvec(2:end-1)],'xticklabels',xlabels2,'ytick',yvec,'yticklabels',ylab);%{'PRE','LD',xlab(3:end,:)}
     axis([xvec(1),xvec(end)+1,.5,10.5])%yvec(1),yvec(end)+1])
@@ -86,19 +90,33 @@ if numSectors==10
 elseif numSectors==63
     x1=[ones(numSectors,1);ddatax.xmin';x1];
     x=reshape(x1,numSectors,numPeriods);
+    x(end+1,:)=zeros(1,numPeriods);
+    x(:,end+1)=zeros(numSectors+1,1);
     xvec=(1:numPeriods)';
     xlab=num2str(xvec-2);
     xvec=xvec-.5;
-    yvec=(1:10:63)';
-    ylab=num2str(yvec);
-    yvec=yvec-.5;
+    %yvec=(1:10)';
+    yvec=cumsum([0,3,23,1,9,4,3,1,9,4]');%,6)
+    yvec2=yvec([1,2,3,5,6,7,9,10]);
+    ylab=num2str(yvec2+1);
+    %yvec=yvec-.5;
     %colormap gray
-    imagesc(x)
+    hold on
+    h=pcolor(tc,xc,x);
+    for i=1:lt
+        plot(tp(i)*[1,1],[-1,64],'k-','linewidth',.2)
+    end
+    for i=1:length(yvec)
+        plot([tp(1),tp(end)],yvec(i)*[1,1],'k-','linewidth',.2)
+    end
+    plot([tp(1),tp(end)],[63,63],'k-','linewidth',.2)
+    set(h,'edgecolor','none')
     set(gca,'YDir','normal')
-    xlabel('Period')
+    xlabel('Time')
     ylabel('Sector')
-    set(gca,'fontsize',fs,'xtick',[0,tvec(2:end-1)],'xticklabels',xlabels2,'ytick',yvec,'yticklabels',ylab);%{'PRE','LD',xlab(3:end,:)}
-    axis tight%([0,numPeriods,.5,63.5])%yvec(1),yvec(end)+1])
+    set(gca,'fontsize',fs,'xtick',tp(1:end-1),'xticklabels',xlabels2,'ytick',yvec2,'yticklabels',ylab);%{'PRE','LD',xlab(3:end,:)}
+    %axis([0,tvec(end),0,63])%yvec(1),yvec(end)+1])
+    axis([0,numPeriods,0,63])%yvec(1),yvec(end)+1])
     caxis([0,1])
     colorbar
     grid on

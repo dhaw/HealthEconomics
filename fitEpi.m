@@ -56,9 +56,9 @@ tvec=[params(2),params(3),214,215];%78,79,80];%80=last day of interest params(3)
 %tout=simu(v7,1);
 if simu(1,1)>1%(1,2)****?
     %simu=[(1:simu-1)';simu(:,2)];
-    simu=[zeros(simu(1,1)-1,1);simu(:,2)];
+    simu=[zeros(simu(1,1)-1,1);simu(:,3)];
 else
-    simu=simu(:,2);
+    simu=simu(:,3);
 end
 f=simu(xdata);%(v7);%Cumulative deaths
 end

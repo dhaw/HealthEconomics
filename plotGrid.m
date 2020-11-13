@@ -1,5 +1,7 @@
 function f=plotGrid(x)
-xvec=(1:8)';
+[numSec,numInt]=size(x);
+
+xvec=(1:numInt)';
 xlab=num2str(xvec-2);
 xvec=xvec-.5;
 yvec=(1:10:63)';

@@ -1,5 +1,7 @@
 function [f,g]=heSimCovid19(pr,beta,tvec,Dvec,n,nbar,NNvec,phi1,phi2,seedvec,S0,tau,plotTau)
-
+hospInc=0;
+lx=length(S0)-4;
+adInd=3;
 %{
 %Feed in to function - from prep
 NNages=NNvec(:,1);
@@ -24,6 +26,7 @@ if solvetype==2
     DEout=zeros(nbar,lt);
     Rout=DEout;
     Rt=zeros(lt-1,1);
+    HnewAll=[];
     for i=1:lt-1
         D=Dvec(:,:,i);
         tend=tvec(i+1);
@@ -40,12 +43,16 @@ if solvetype==2
         end
         %}
         %topen=1;%tvec(3);
-        [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i);
+        if hospInc>=1
+            Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,y0(1:lx+4));
+        end
+        [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0,Hnew]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i,hospInc);
         toutAll=[toutAll;tout(2:end)];
         Sout=[Sout;Sclass(2:end,:)];
         Hout=[Hout;Hclass(2:end,:)];
         Dout=[Dout;Dclass(2:end,:)];
         DEout(:,i)=DEcum;
+        HnewAll=[HnewAll;Hnew(2:end,:)];
         %Rout(:,i)=Rcum;
         Iout=[Iout;Itot(2:end,:)];
         t0=tend;
@@ -53,15 +60,21 @@ if solvetype==2
         %HE:
         %Calculate in advance?
         %Need to add age structure in here - only uses n, not na****
-        Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,Sclass(end,:)');
+        %
+        %Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,Sclass(end,:)');%****
+        if hospInc==0
+            %Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,y0(1:lx+4));
+            Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,Sclass(end,:)');
+        end
+        %
         if i<lt-1
-            Xh2w=NNvec(1:n-1,i+1)-NNvec(1:n-1,i);%Addition to each wp next intervention step
+            Xh2w=NNvec(1:lx,i+1)-NNvec(1:lx,i);%Addition to each wp next intervention step
             Xw2h=-Xh2w; Xw2h(Xw2h<0)=0; 
-            Xw2h=Xw2h./NNvec(1:n-1,i);
-            Xw2h(NNvec(1:n-1,i)==0)=0;
-            if NNvec(n,i)>0
+            Xw2h=Xw2h./NNvec(1:lx,i);
+            Xw2h(NNvec(1:lx,i)==0)=0;
+            if NNvec(lx+adInd,i)>0
                 Xh2w(Xh2w<0)=0;
-                Xh2w=Xh2w/NNvec(n,i);
+                Xh2w=Xh2w/NNvec(lx+adInd,i);
             else
                 Xh2w=0;
             end
@@ -69,12 +82,12 @@ if solvetype==2
             %y0=reshape(y0,[n,13]);%HE
             y0=reshape(y0,[n,12]);%IC
             %y0w2h=y0(1:n-1,:).*repmat(Xw2h,1,13);%HE
-            y0w2h=y0(1:n-1,:).*repmat(Xw2h,1,12);%IC
+            y0w2h=y0(1:lx,:).*repmat(Xw2h,1,12);%IC
             y0w2h=[-y0w2h;sum(y0w2h,1)];
-            y0h2w=y0(n,:);
+            y0h2w=y0(lx+adInd,:);
             y0h2w=kron(y0h2w,Xh2w);
             y0h2w=[y0h2w;-sum(y0h2w,1)];
-            y0=y0+y0w2h+y0h2w;
+            y0([1:lx,lx+adInd],:)=y0([1:lx,lx+adInd],:)+y0w2h+y0h2w;
             %y0=reshape(y0,13*nbar,1);%HE
             y0=reshape(y0,12*nbar,1);%IC
         end
@@ -90,18 +103,46 @@ elseif solvetype==3
     error('Code not written yet')
     %f=stochSim(y0,beta,gamma,n,nbar,NN,NN0,D,seed,phi1,phi2,tau,alpha);
 end
+%%
+%Function outputs here:
 %For plots:
-f=[toutAll,sum(Hout,2)];
-%f=[toutAll(2:end),-diff(sum(Sout,2))./diff(toutAll)];%Rt;%toutAll;%(2:end);
-%g=max(sum(Hout(toutAll>tvec(3),:),2));
-g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%sum(Rout(end,:))];%Rout+DEout;%sum(Hout,2);%-diff(sum(Sout,2))./diff(toutAll);
-%g=cumsum(Iout);
-%g=sum(Dout,2);
+
+if hospInc==0
+    %Rt calculated at end of each period
+    %f=[toutAll(toutAll>0),sum(Hout(toutAll>0,:),2)];%For epi fit
+    f=[toutAll(toutAll>0),sum(Sout(toutAll>0,:),2),sum(Hout(toutAll>0,:),2)];%sum(DEout(end,:));
+    g=[max(sum(Hout(toutAll>tvec(3),:),2)),Rt(end)];%Main constraints
+elseif hospInc==1%****
+    f=[toutAll(toutAll>0),HnewAll(toutAll>0,:)];
+    g=sum(sum(HnewAll(toutAll>tvec(3),:)));
+    %g=Rt(3);
+elseif hospInc==2
+    f=[toutAll(toutAll>0),sum(Sout(toutAll>0,:),2),sum(Hout(toutAll>0,:),2)];%Occupancy
+    g=sum(sum(HnewAll(toutAll>tvec(3),:)));%Incidence
 end
 
-function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen)
+end
+
+function [tout,Sclass,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen,hospInc)
 %ncomps=13;%Number of compartments
-    [tout,yout]=ode45(@(t,y)integr8covid(t,y,pr,beta,nbar,NN0,D,phi1,phi2,seedvec,topen),[t0,tend],y0);
+
+    %varPassedOut=0;
+    
+    fun=@(t,y)integr8covid(t,y,pr,beta,nbar,NN0,D,phi1,phi2,seedvec,topen);
+    [tout,yout]=ode45(fun,(round(t0):1:tend),y0);
+    %%
+    %
+    %For fit:
+    if hospInc==1
+        Hnew=zeros(length(tout),nbar);
+        for i=1:length(tout)
+            [~,Hnewi]=fun(tout(i),yout(i,:)');
+            Hnew(i,:)=Hnewi';
+        end
+    else
+        Hnew=0;
+    end
+    %%
     Sclass=yout(:,1:nbar);
     %{
     %HE:
@@ -176,21 +217,23 @@ if solvetype==2
     hold on
     semilogy(tout,Yall);
     %}
-    
-
     lt=length(tvec);
-    points=tvec+10;
+    points=[0,tvec(2:end)]+10;
     pointsy=.93*maxY;
-    txt={'1','2','3','4','5','6'};
-    for i=3:lt-1
-        text(points(i),pointsy,txt{i-2},'fontsize',20)
+    txt={'PRE','LD','1','2','3','4','5','6'};
+    for i=1:lt-1
+        text(points(i),pointsy,txt{i},'fontsize',20)
     end
     
-    xlabel('Time (days since 1st Jan)','FontSize',fs);
+    xlabel('Time','FontSize',fs);
     ylabel('Population','FontSize',fs);%yvar
     set(gca,'FontSize',fs);
-    axis ([0,tend,0,maxY])
-    legend([h1,h2],'Incidence','Hospitalisations','location','NW')
+    axis([0,tend,0,maxY])
+    
+    xticks([1,32,61,92,122,153,183,214,245,275,306,336,367,398])
+    xticklabels({'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb'})
+    
+    legend([h1,h2],'Inc.','HO','location','W')
     %
     if na==4
         legend(h,{'0-4','5-19','20-64','65+'},'location','NE')
@@ -208,27 +251,13 @@ if solvetype==2
 end
 end
 
-function f=integr8covid(t,y,pr,betaIn,nbar,NN0,D,phi1,phi2,seedvec,itime)
+function [f,g]=integr8covid(t,y,pr,betaIn,nbar,NN0,D,phi1,phi2,seedvec,itime)
 %phi=phi1-phi2*cos(pi*t/180);%Seasonality****
 phi=phi1;
 %%
 S=y(1:nbar);
 E=y(nbar+1:2*nbar);
 Ia=y(2*nbar+1:3*nbar);
-%{
-Ip=y(3*nbar+1:4*nbar);
-Inm=y(4*nbar+1:5*nbar);
-Ism=y(5*nbar+1:6*nbar);
-Ins=y(6*nbar+1:7*nbar);
-Iss=y(7*nbar+1:8*nbar);
-Qm=y(8*nbar+1:9*nbar);
-Qs=y(9*nbar+1:10*nbar);
-H=y(10*nbar+1:11*nbar);
-%H2=y(11*nbar+1:12*nbar);
-I=2/3*Ia+2/3*Ip+Inm+Ism+Ins+Iss;%All infectious
-%DE=y(10*nbar+1:11*nbar);
-%R=y(11*nbar+1:end);
-%}
 %
 %IC:
 Inm=y(3*nbar+1:4*nbar);
@@ -257,33 +286,23 @@ Sfoi=phi*(beta*S.*(D*(I./NN0))+seed1);
 %%
 Sdot=-Sfoi;
 Edot=Sfoi-pr.sigma*E;
-%{
-%HE model:
-Iadot=(1-pr.p1)*pr.sigma*E-(1+pr.odds)*pr.g1*Ia;%2**
-Ipdot=pr.p1*pr.sigma*E-(1+pr.odds)*pr.omega*Ip;%2**
-Inmdot=(1-pr.p2)*(1-pr.p3)*pr.omega.*Ip-pr.g2*Inm;
-Ismdot=(1-pr.p2)*pr.p3*pr.omega.*Ip-(pr.g2+pr.q1)*Ism;
-Insdot=pr.p2*(1-pr.p4)*pr.omega.*Ip-pr.h*Ins;%*(1-h).*Ins;
-Issdot=pr.p2*pr.p4*pr.omega.*Ip-(pr.h+pr.q2)*Iss;%(1-h).*Iss;
-Qmdot=pr.g1*pr.odds*Ia+(1-pr.p2)*pr.omega*pr.odds.*Ip+pr.q1*Ism-pr.g4*Qm;
-Qsdot=pr.p2*pr.omega*pr.odds.*Ip+pr.q2*Iss-pr.h*Qs;
-%}
-%
 %HE model IC:
 Iadot=(1-pr.p1)*pr.sigma*E-(1+pr.odds)*pr.g1*Ia;%2**
 %Ipdot=pr.p1*pr.sigma*E-(1+pr.odds)*pr.omega*Ip;%2**
-Inmdot=pr.p1*pr.sigma*(1-pr.p2)*(1-pr.p3)*E-pr.g2*Inm;
-Ismdot=pr.p1*pr.sigma*(1-pr.p2)*pr.p3*E-(pr.g2+pr.q1)*Ism;
-Insdot=pr.p1*pr.sigma*pr.p2*(1-pr.p4)*E-(pr.h+pr.gX)*Ins;%*(1-h).*Ins;
-Issdot=pr.p1*pr.sigma*pr.p2*pr.p4*E-(pr.h+pr.q2+pr.gX)*Iss;%(1-h).*Iss;
-Qmdot=pr.g1*pr.odds*Ia+pr.q1*Ism-pr.g4*Qm;
-Qsdot=pr.q2*Iss-pr.h*Qs;
+Inmdot=pr.p1*pr.sigma*(1-pr.p2)*(1-pr.p3).*E-pr.g2.*Inm;
+Ismdot=pr.p1*pr.sigma*(1-pr.p2)*pr.p3.*E-(pr.g2+pr.q1).*Ism;
+Insdot=pr.p1*pr.sigma*pr.p2*(1-pr.p4).*E-(pr.h+pr.gX).*Ins;%*(1-h).*Ins;
+Issdot=pr.p1*pr.sigma*pr.p2*pr.p4.*E-(pr.h+pr.q2+pr.gX).*Iss;%(1-h).*Iss;
+Qmdot=pr.g1*pr.odds*Ia+pr.q1*Ism-pr.g4.*Qm;
+Qsdot=pr.q2*Iss-pr.h.*Qs;
 %}
-Hdot=pr.h*(Ins+Iss+Qs)-pr.g3*H;
-DEdot=pr.g3*pr.mu.*H;
-Rdot=pr.g1*Ia+pr.g2*(Inm+Ism)+pr.g3*(1-pr.mu).*H+pr.g4*Qm+pr.gX*(Ins+Iss);
+Hdot=pr.h.*(Ins+Iss+Qs)-(pr.g3+pr.mu).*H;
+DEdot=pr.mu.*H;
+Rdot=pr.g1*Ia+pr.g2.*(Inm+Ism)+pr.g3.*H+pr.g4.*Qm+pr.gX.*(Ins+Iss);
 %f=[Sdot;Edot;Iadot;Ipdot;Inmdot;Ismdot;Insdot;Issdot;Qmdot;Qsdot;Hdot;DEdot;Rdot];
 f=[Sdot;Edot;Iadot;Inmdot;Ismdot;Insdot;Issdot;Qmdot;Qsdot;Hdot;DEdot;Rdot];
+
+g=pr.h.*(Ins+Iss+Qs);%Hin
 end
 
 %Stochastic variant - needs update to C19 flowchart
@@ -318,7 +337,31 @@ if sum(isnan(R))>0
     print('Somenting is NaN')
 end
 end
-
+%{
+Ip=y(3*nbar+1:4*nbar);
+Inm=y(4*nbar+1:5*nbar);
+Ism=y(5*nbar+1:6*nbar);
+Ins=y(6*nbar+1:7*nbar);
+Iss=y(7*nbar+1:8*nbar);
+Qm=y(8*nbar+1:9*nbar);
+Qs=y(9*nbar+1:10*nbar);
+H=y(10*nbar+1:11*nbar);
+%H2=y(11*nbar+1:12*nbar);
+I=2/3*Ia+2/3*Ip+Inm+Ism+Ins+Iss;%All infectious
+%DE=y(10*nbar+1:11*nbar);
+%R=y(11*nbar+1:end);
+%}
+%{
+%HE model:
+Iadot=(1-pr.p1)*pr.sigma*E-(1+pr.odds)*pr.g1*Ia;%2**
+Ipdot=pr.p1*pr.sigma*E-(1+pr.odds)*pr.omega*Ip;%2**
+Inmdot=(1-pr.p2)*(1-pr.p3)*pr.omega.*Ip-pr.g2*Inm;
+Ismdot=(1-pr.p2)*pr.p3*pr.omega.*Ip-(pr.g2+pr.q1)*Ism;
+Insdot=pr.p2*(1-pr.p4)*pr.omega.*Ip-pr.h*Ins;%*(1-h).*Ins;
+Issdot=pr.p2*pr.p4*pr.omega.*Ip-(pr.h+pr.q2)*Iss;%(1-h).*Iss;
+Qmdot=pr.g1*pr.odds*Ia+(1-pr.p2)*pr.omega*pr.odds.*Ip+pr.q1*Ism-pr.g4*Qm;
+Qsdot=pr.p2*pr.omega*pr.odds.*Ip+pr.q2*Iss-pr.h*Qs;
+%}
 %{
 Iadot=(1-pr.p1)*pr.sigma*E-pr.g1*Ia;
 Ipdot=pr.p1*pr.sigma*E-pr.omega*Ip;

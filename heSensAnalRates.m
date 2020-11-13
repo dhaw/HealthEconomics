@@ -5,19 +5,20 @@ function H=heSensAnalRates(NNsx,ddatax,xoptim,tvec)
 sdfact=.05;
 numIter=1000;
 %
-F=zeros(306,numIter);
+F=zeros(426,numIter);
 %G=F;
 H=F;
 parfor i=1:numIter
     ddataxi=ddatax;
-    %{
+    %
     ddataxi.B=normrnd(ddataxi.B,sdfact*ddataxi.B);
     ddataxi.C=normrnd(ddataxi.C,sdfact*ddataxi.C);
-    %}{
+    %}
+    %
     ddataxi.schoolA1=normrnd(ddataxi.schoolA1,sdfact*ddataxi.schoolA1);
     ddataxi.schoolA2=normrnd(ddataxi.schoolA2,sdfact*ddataxi.schoolA2);
     %}
-    %{
+    %
     ddataxi.travelA3=normrnd(ddataxi.travelA3,sdfact*ddataxi.travelA3);
     ddataxi.hospA2=normrnd(ddataxi.hospA2,sdfact*ddataxi.hospA2);
     ddataxi.hospA3=normrnd(ddataxi.hospA3,sdfact*ddataxi.hospA3);
@@ -30,5 +31,5 @@ parfor i=1:numIter
     [f1,~]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,xoptim,tvec,0,ddataxi);
     %F(:,i)=f1(:,1);
     %G(:,i)=f1(:,2);
-    H(:,i)=f1(:,3);
+    H(:,i)=f1(1:426,3);
 end

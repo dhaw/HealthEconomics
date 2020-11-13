@@ -1,4 +1,5 @@
 function f=heMakeDs(NN,x,datax,int)%NNfrac,x4)
+childrenLessSus=0;
 
 if int==1
     datax.schoolA2=datax.schoolA2*1;
@@ -26,6 +27,7 @@ adInd=3;%Adult index
 %
 lc=length(C);
 C=C*background/2.0284;%Weighted average? %sum(C(3,:));
+
 CworkRow=C(3,:);
 %%
 %if length(NN)==lc+1%*1Dage
@@ -119,7 +121,14 @@ elseif length(NN)==67
         matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*datax.travelA3(1).*repmat(1-datax.wfhAv,lx,1).*repmat(1-datax.wfhAv',1,lx);
     end
     %
-    f=matA+matB+matC;%*1.1/datax.comm(1)
+    D=matA+matB+matC;
+    
+    if childrenLessSus==1
+        D(end-3,:)=.5*D(end-3,:);
+        D(end-2,:)=9/15*D(end-2,:);
+    end
+    
+    f=D;
 elseif length(NN)==5%Single sector
     ln=length(NN);
     NNrel=NN([1:lx,lx+adInd])/sum(NN([1:lx,lx+adInd]));
@@ -160,7 +169,14 @@ elseif length(NN)==5%Single sector
         matA(1:lx,1:lx)=matA(1:lx,1:lx)+NNrep(1:lx,1:lx)*datax.travelA3(1).*repmat(1-datax.wfhAv,lx,1).*repmat(1-datax.wfhAv',1,lx);
     end
     %
-    f=matA+matB+matC;
+    D=matA+matB+matC;
+    
+    if childrenLessSus==1
+        D(end-3,:)=.5*D(end-3,:);
+        D(end-2,:)=9/15*D(end-2,:);
+    end
+    
+    f=D;
 end
 %{
 %Original 10 sector model:

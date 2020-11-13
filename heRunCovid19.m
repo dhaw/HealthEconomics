@@ -7,18 +7,15 @@ function [f,g]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,Xit,tvec,plotT
 %plotTau=1 to plot output. 
 %Note: this is set to 0 in any optimisation protocol to avoid a crash due
 %to rendering loads of images!
-%
-pmod=.5077;%.4922;%ons 0.3248;%1s %0.5602;%64s
+%%
+%HARD-CODED PARAMETERS:
+%This is fitted lockdown delta:
+pmod=0.5408;%0.5408;%Main %0.6808%cls
+%This is post-lockdown delta:
+pmodIn=0.6;
 lt=length(tvec);
-pr.betamod=[1,pmod,.6*ones(1,lt-3)];
-%{
-betamodmax=.7461;
-pinc=(betamodmax-pmod)/6;
-pr.betamod=[1,pmod,pmod+pinc:pinc:betamodmax];
-%}
-%pr.betamod=ones(1,lt-1);
-%pr.betamod=[1,pmod,betamodmax*ones(1,lt-3)];
-%
+pr.betamod=[1,pmod,pmodIn*ones(1,lt-3)];
+%%
 isdual=1;
 solvetype=2;
 numseed=7;

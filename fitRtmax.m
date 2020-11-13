@@ -18,7 +18,7 @@ f=poptim;
 end
 
 function f=sim2fit(NNsectorAges,params,datax)
-tvec=[-59.4613,86.3881,122,670];
+tvec=[0.5262,-49.7725,245,670];%[-49.7725,86.3881,245,670];%[-59.4613,86.3881,122,670];
 %1st March=day 61
 %62+78*7=608
 [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(NNsectorAges,datax);
@@ -28,8 +28,8 @@ end
 
 function f=nonlcon(NNsectorAges,params,datax,RmaxIn,xdata)%(params,RmaxIn)%
 %x=fun(params);%sim2fit(NNsectorAges,params,datax);
-tvec=[-59.4613,86.3881,122,670];
+tvec=[-49.7725,86.3881,245,336,670];%[-59.4613,86.3881,122,670];
 [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(NNsectorAges,datax);
-[Rmax,~]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,datax.xmin',tvec,0,datax,params);%pmod
+[~,Rmax]=heRunCovid19(pr,n,nbar,na,NN,NNbar,NNrep,Dout,beta,repmat(datax.xmin',2,1),tvec,0,datax,params);%pmod
 f=Rmax(xdata)-RmaxIn;
 end

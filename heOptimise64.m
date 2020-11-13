@@ -1,29 +1,43 @@
 function [xoptim,yoptim,exitflag]=heOptimise64%(xoptim)%(NNsector,data64,econ64)
 %%
+%Scenario (A or B):
+scenB=1;
+
+%Intervention intervals (1 for 6x1, 2 for 3x2):
+monthPeriod=2;
+
+%Output file name:
+fileName='gs_B2.mat';
+
+%Option to input X0:
+X0in=0;
+%Note: if numPeriod=1, code assumes that X0 is a 3x2 solution
+
+%Epi constraints (H_max, R_end):
+hospThresh=[18000,1];
+%%
 load('NNs64.mat','NNs64')
 NNsector=NNs64;
 load('ddata64.mat','ddata64')
 load('eecon64.mat','eecon64')
-load('px10xout.mat','xoptim')
+if X0in==1
+    %Input XO as 'xoptim in this file:
+    load('gs_1.mat','xoptim')
+end
 %%
-hospThresh=[28115,1];
-%38172	53365	74966	82966
-% 18057   28115   38172	53365
-%23086 33144
-
-t0=-49.7725;%-53.8370;
-t1=86.3881;%87.1771;
+t0=-49.7725;%-49.7725;
+t1=86.3881;%86.3881;
 tend=720;
 months=[1,32,61,92,122,153,183,214,245,275,306,336,367,398,426,457,487,tend];
-tvec=[t0,t1,months(9:15)];%Fit tvec(1)=t0 %11
+tvec=[t0,t1,months(9:monthPeriod:15)];%Fit tvec(1)=t0 %11
 lastInt=1;%(tend-tvec(end-1))/30;
 numInt=length(tvec)-3;
 numAges=4;
 %%
 %NNsector=data64.NNsector;
-G=eecon64.G;
+G=eecon64.G*monthPeriod;
 b=eecon64.b;
-objFun=eecon64.obj;%Monthly
+objFun=eecon64.obj*monthPeriod;%Monthly
 %%
 %Tune epi-midel to pre-lockdown:
 [pr,NN,n,nbar,na,NNbar,NNrep,Din,beta]=hePrepCovid19(NNsector,ddata64);
@@ -44,24 +58,33 @@ ub=lb;
 lb(lb>1)=1;
 ub(ub<1)=1;
 %%
-X0=lb;
-X0=xoptim;
+if X0in==0
+    X0=lb;
+else
+    X0=xoptim;
+    if monthPeriod==1
+        X0=[X0(1:63);X0(1:63);X0(64:126);X0(64:126);X0(127:189);X0(127:189)];
+    end
+end
 %Chunk at bottom
-
 fun1=@(Xit)econGDP(objFun,Xit);
 nonlcon=@(Xit)epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,ddata64);
-
-%Education:
-%X0(55:63:end)=0.8;
-
-%X0=linprog(ones(1,size(Z2,2)),Z2,b2,[],[],X0,X0+.1*(ub-X0));
-
+if X0in==0
+    if scenB==1
+        X0(55:63:end)=0.8;
+    end
+    X0=linprog(ones(1,size(Z2,2)),Z2,b2,[],[],X0,X0+.1*(ub-X0));
+end
 %lb=zeros(378,1);
+
+%Set lower bound:
 lb=0.8*lb;
+
 %Health:
-lb(56:63:end)=ddata64.xmin(56);
-%Education:
-%lb(55:63:end)=0.8;
+%lb(56:63:end)=ddata64.xmin(56);
+if scenB==1
+	lb(55:63:end)=0.8;
+end
 %%
 %{
 options=optimoptions(@fmincon,'MaxFunctionEvaluations',1e5,'MaxIterations',1e5,'algorithm','interior-point');%'sqp' %'interior-point'
@@ -85,24 +108,37 @@ ms=MultiStart('StartPointsToRun','bounds');%,'Display','iter','MaxTime',3600);
 %exitflag='Not relevant for ms';
 %}
 %%
-%
+%{
 rng default
-ips=struct;
-ips.X0=[X0';X0'+.1*(ub'-X0')];
-options=optimoptions('patternsearch','UseParallel',true,'UseVectorized', false,'UseCompletePoll',true,'MaxFunctionEvaluations',1e6,'MaxIterations',1e6);%,'ConstraintTolerance',1);
+options=optimoptions('patternsearch','UseParallel',true,'UseVectorized', false,'UseCompletePoll',true);%,'InitialPoints',ips);%'MaxFunctionEvaluations',1e6,'MaxIterations',1e6);%,'ConstraintTolerance',1);
 [xoptim,yoptim,exitflag]=patternsearch(fun1,X0,Z2,b2,[],[],lb,ub,nonlcon,options);
-%%options=optimoptions('paretosearch','UseParallel',true,'UseVectorized', false,'InitialPoints',ips);%,'UseCompletePoll',true
-%[xoptim,yoptim,exitflag]=paretosearch(fun1,378,Z2,b2,[],[],lb,ub,nonlcon,options);
 %}
 %%
 %{
+rng default
+%ips=struct;
+%ips.X0=[.9*X0';.8*X0'+.5*(ub'-X0')];
+np=23;
+xmin=repmat(.9*X0',np,1);
+xmax=repmat(.1*X0'+.5*(ub'-X0'),np,1);
+ips=xmin+rand(np,378/monthPeriod).*xmax;
+ips=[X0';ips];
+fun2=@(Xit)econGDPga(objFun,Xit);
+optimoptions('patternsearch','UseVectorized',true);%,'UseCompletePoll',true);
+options=optimoptions('paretosearch','InitialPoints',ips);%'UseParallel',false,'UseVectorized', true,'InitialPoints',ips);%,'ParetoSetSize',1e4 ,'UseCompletePoll',true
+[xoptim,yoptim,exitflag]=paretosearch(fun2,378/monthPeriod,Z2,b2,[],[],lb,ub,nonlcon,options);
+%}
+%%
+%{
+fun2=@(Xit)econGDPga(objFun,Xit);
 rng default
 options=optimoptions('ga','UseParallel',true,'UseVectorized',false,'InitialPopulationRange',[X0';X0'+.1*(ub'-X0')]);
 %opts.InitialPopulationRange=[lb'; X0'];%2 rows, nvar columns - lb;ub
-[xoptim,yoptim,exitflag]=ga(fun1,378,Z2,b2,[],[],lb,ub,nonlcon,options);
+[xoptim,yoptim,exitflag]=ga(fun2,378/monthPeriod,Z2,b2,[],[],lb,ub,nonlcon,options);
+xoptim=xoptim';
 %}
 %%
-%{
+%
 rng default % For reproducibility
 options=optimoptions(@fmincon,'UseParallel',true,'MaxFunctionEvaluations',1e6,'MaxIterations',1e6);%,'algorithm','interior-point',
 problem=createOptimProblem('fmincon','x0',X0,'objective',fun1,'Aineq',Z2,'bineq',b2,'lb',lb,'ub',ub,'nonlcon',nonlcon,'options',options);
@@ -110,11 +146,15 @@ gs=GlobalSearch;
 [xoptim,yoptim,exitflag]=run(gs,problem);
 %}
 %%
-save('px11xout.mat','xoptim','yoptim','exitflag')%,'output','manymins')
+save(fileName,'xoptim','yoptim','exitflag')%,'output','manymins')
 end
 
 function f=econGDP(obj,Xit)%,lx)
 f=-sum(obj.*Xit);
+end
+
+function f=econGDPga(obj,Xit)%,lx)
+f=-sum(obj'.*Xit);
 end
 
 function [c,cex]=epiConstraint(pr,n,nbar,na,NN,NNbar,NNrep,Din,beta,Xit,tvec,hospThresh,ddata64)

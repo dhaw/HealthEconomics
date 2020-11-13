@@ -2,8 +2,10 @@ function [pr,NN,n,nbar,na,NNbar,NNrep,Dout,beta]=hePrepCovid19(D,datax)%,R0)
 %D - column vector or populations.
 %Possible generalsiation to within-sector heterogeneity - one column per
 %category.
+%%
+%HARD-CODED PARAMETERS:
 pr=struct;
-pr.R0=2.7274;%2.7297;%ons 3.0241;%1s %2.8109;%64s
+pr.R0=2.7501;%2.7501;%Main %2.7242;%cls %R0
 lc=4;
 adInd=3;
 lx=length(D)-lc;
@@ -41,8 +43,8 @@ D=heMakeDs(NN,ones(lx,1),datax,0);%,1);
 %%
 %Hard code from heParamsAge:
 Tilih=5;
-Thdeath=10.81;%Median 8
-Threc=12.73;%Median 9
+Thdeath=8;%10.81;%Median 8
+Threc=9;%12.73;%Median 9
 pdeath=.39;
 pili=[0.4670,0.4786,0.6590,0.7252]';
 pili=[repmat(pili(adInd),lx,1);pili];
