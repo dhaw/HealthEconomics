@@ -1,38 +1,48 @@
 function [f,g]=heSimCovid19vax(pr,beta,tvec,Dvec,n,nbar,NNvec,phi1,phi2,seedvec,S0,tau,plotTau)
 hospInc=0;
-lx=length(S0)-4;
+na=4;%Num ages
+lx=length(S0)-na;
 adInd=3;
 %%
 %Vacconation parameters:
 vx=struct;
-NNage=[4064198,12192593,36577778,13005432]';%NumAgeGroupsExplicit
-tpoints=[336,367,457];%Period end points - 1st Dec, 1st Jan, 1st April
+vx.NNage=[4064198,12192593,36577778,13005432]';
+prop50=15/45;
+tpoints=[1,32,122];%[336,367,457];%Period end points - 1st Dec, 1st Jan, 1st April
 tint=diff(tpoints);%Period lengths
 %PERIOD 1
-vx.startv1=92;%336;%336 - 1st Dec
-vx.rate1=[zeros(nbar-1,1);2e6/tint(1)]/NNage(4);
-vx.uptake=ones(nbar,1);
-%vx.uptake1=ones(nbar,1);
+vx.startv1=tpoints(1);%336;%336 - 1st Dec
+vx.rate1=[zeros(nbar-1,1);2e6/tint(1)]/vx.NNage(4);
+vx.rate1age=[0;0;0;2e6/tint(1)];%By age group only, times N
+%vx.uptake1=ones(na,1);
 %PERIOD 2:
 %Proportion of working age over 50:
-vx.startv2=102;%367;%Next vax change; 398=1st Feb 2021
-prop50=15/45;
-%vx.uptake2=;
-vx.startv2=102;%367;%Next vax change; 398=1st Feb 2021
-vx.rate2=[prop50*ones(nbar-4,1);0;0;prop50;1]/tint(2);%*NNnext/NNnext
+vx.startv2=tpoints(2);%367;%Next vax change; 398=1st Feb 2021
+NNnext=[0;0;prop50*vx.NNage(3);vx.NNage(4)-2e6];
+%vx.rate2=[prop50*ones(nbar-4,1);0;0;prop50;1];
+vx.rate2age=[0;0;prop50;1].*NNnext/sum(NNnext)/tint(2);
+totRate2=sum(vx.rate2age);%To determine rate for next period
+%vx.uptake2=zeros(na,1);
 %PERIOD 3:
-%
+vx.startv2=245;
+vx.startv3=102;%367;%Next vax change; 398=1st Feb 2021
+vx.rate3=[prop50*ones(nbar-na,1);0;0;prop50;1]/tint(2);
+vx.rate3age=[0;0;prop50;1]/tint(2);
 %Fix parameters:
 %VACCINE 1:
-vx.sus1=.9;
+vx.sus1=1;
 vx.tr1=0;
 vx.p1v1=2/3;
 vx.p2v1=pr.p2;
 %VACCINE 2:
-vx.sus2=.9;
+vx.sus2=1;
 vx.tr2=0;
 vx.p1v2=2/3;
 vx.p2v2=pr.p2;
+%Uptake:
+propCare=398840/vx.NNage(4);
+upUnder50=.75;
+vx.uptake=[0;0;.75*prop50+upUnder50*(1-prop50);.95*propCare+.75*(1-propCare)];
 %%
 solvetype=2;
 zn=zeros(nbar,1);
@@ -41,7 +51,7 @@ if solvetype==2
     lt=length(tvec);
     t0=tvec(1);%tvec(1)=start time for while simulation
     %y0=[S0;repmat(zn,11,1);NNbar-S0];%HE
-    y0=[S0;repmat(zn,18,1);NNbar-S0];%IC
+    y0=[S0;repmat(zn,18,1);NNbar-S0;zeros(4,1)];%IC %NumAgeGroupsExplicit
     toutAll=[];
     Sout=[];
     Soutv1=Sout;
@@ -58,7 +68,9 @@ if solvetype==2
         tend=tvec(i+1);
         NNfeed=NNvec(:,i);
         
-        %vx.rate1=2e6*NNfeed/sum(NNfeed).*ones(nbar,1);
+        NNnext=NNfeed;
+        NNnext(end)=NNnext(end)-2e6;
+        vx.rate2=[prop50*ones(nbar-4,1);0;0;prop50;1].*NNnext/sum(NNnext)/tint(2);
         
         NNfeed(NNfeed==0)=1;
         %
@@ -75,7 +87,7 @@ if solvetype==2
         if hospInc>=1
             Rt(i)=heComputeEigs(pr,beta,D,NNfeed,nbar,y0(1:lx+4));
         end
-        [tout,Sclass,Sclassv1,Sclassv2,Hclass,Dclass,DEcum,Rcum,Itot,y0,Hnew]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i,hospInc,vx);
+        [tout,Sclass,Sclassv1,Sclassv2,Hclass,Dclass,DEcum,Rcum,Itot,y0,Hnew]=integr8(pr,beta,nbar,NNfeed,D,phi1,phi2,seedvec,t0,tend,y0,i,hospInc,vx,lx);
         toutAll=[toutAll;tout(2:end)];
         Sout=[Sout;Sclass(2:end,:)];
         Soutv1=[Soutv1;Sclassv1(2:end,:)];
@@ -110,8 +122,10 @@ if solvetype==2
                 Xh2w=0;
             end
             %Move all infection statuses:
+            %DON'T PANIC - THIS IS y0new (as a column vector)!
             %y0=reshape(y0,[n,13]);%HE
-            y0=reshape(y0,[n,20]);%IC
+            v0=y0(end-3:end);%NumAgeGroupsExplicit
+            y0=reshape(y0(1:20*nbar),[n,20]);%IC
             %y0w2h=y0(1:n-1,:).*repmat(Xw2h,1,13);%HE
             y0w2h=y0(1:lx,:).*repmat(Xw2h,1,20);%IC
             y0w2h=[-y0w2h;sum(y0w2h,1)];
@@ -120,7 +134,7 @@ if solvetype==2
             y0h2w=[y0h2w;-sum(y0h2w,1)];
             y0([1:lx,lx+adInd],:)=y0([1:lx,lx+adInd],:)+y0w2h+y0h2w;
             %y0=reshape(y0,13*nbar,1);%HE
-            y0=reshape(y0,20*nbar,1);%IC
+            y0=[reshape(y0,20*nbar,1);v0];%IC
         end
         %%
         %Calculate per-person vaccination rates
@@ -154,12 +168,12 @@ elseif hospInc==2
 end
 end
 
-function [tout,Sclass,Sclassv1,Sclassv2,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen,hospInc,vx)
+function [tout,Sclass,Sclassv1,Sclassv2,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew]=integr8(pr,beta,nbar,NN0,D,phi1,phi2,seedvec,t0,tend,y0,topen,hospInc,vx,numSectors)
 %ncomps=13;%Number of compartments
 
     %varPassedOut=0;
     
-    fun=@(t,y)integr8covid(t,y,pr,beta,nbar,NN0,D,phi1,phi2,seedvec,topen,vx);
+    fun=@(t,y)integr8covid(t,y,pr,beta,nbar,NN0,D,phi1,phi2,seedvec,topen,vx,numSectors);
     [tout,yout]=ode45(fun,(round(t0):1:tend),y0);
     %%
     %
@@ -190,13 +204,13 @@ function [tout,Sclass,Sclassv1,Sclassv2,Hclass,Dclass,DEcum,Rcum,Itot,y0new,Hnew
     Hclass=yout(:,17*nbar+1:18*nbar);
     Dclass=yout(:,18*nbar+1:19*nbar);
     DEcum=yout(end,18*nbar+1:19*nbar);%Deaths
-    Rcum=yout(end,19*nbar+1:end);
+    Rcum=yout(end,19*nbar+1:20*nbar);
     Itot=sum(yout(:,2*nbar+1:5*nbar),2)+sum(yout(:,8*nbar+1:11*nbar),2)+sum(yout(:,14*nbar+1:17*nbar),2);%Wrong in non-vax code but unused
     y0new=yout(end,:)';
     %}
 end
 
-function [f,g]=integr8covid(t,y,pr,betaIn,nbar,NN0,D,phi1,phi2,seedvec,itime,vx)
+function [f,g]=integr8covid(t,y,pr,betaIn,nbar,NN0,D,phi1,phi2,seedvec,itime,vx,numSectors)
 %phi=phi1-phi2*cos(pi*t/180);%Seasonality****
 phi=phi1;
 %%
@@ -223,6 +237,7 @@ Isv2=y(16*nbar+1:17*nbar);
 H=y(17*nbar+1:18*nbar);
 DE=y(18*nbar+1:19*nbar);
 R=y(19*nbar+1:20*nbar);
+V=y(20*nbar+1:end);
 I=pr.red*Ia+Im+Is+vx.tr1*(pr.red*Iav1+Imv1+Isv1)+vx.tr2*(pr.red*Iav2+Imv2+Isv2);
 seed1=seedvec.*S./NN0;%No seed in sus vaccinated
 beta=betaIn;
@@ -238,15 +253,22 @@ Sfoiv1=phi*((1-vx.sus1)*beta*Sv1.*(D*(I./NN0)));%+seed1);
 Sfoiv2=phi*((1-vx.sus2)*beta*Sv2.*(D*(I./NN0)));%+seed1);
 %
 %Uptake
+uptake=vx.uptake-V./vx.NNage;
+uptake(uptake<0)=0;
+uptake(uptake>0)=1;
+uptake=[repmat(uptake(3),numSectors,1);uptake];
 if t>vx.startv2
-    vrate1=.2*vx.rate2.*S;
-    vrate2=.8*vx.rate2.*S;
+    vrate1=.2*vx.rate2.*S.*uptake;
+    vrate2=.8*vx.rate2.*S.*uptake;
+    Vdot=vx.rate1age+vx.rate2age;
 elseif t>vx.startv1
-    vrate1=vx.rate1.*S;
+    vrate1=vx.rate1.*S.*uptake;
     vrate2=zeros(nbar,1);
+    Vdot=vx.rate1age;
 else 
     vrate1=zeros(nbar,1);
     vrate2=zeros(nbar,1);
+    Vdot=zeros(4,1);
 end
 %
 Sdot=-S.*foi-phi*seed1-vrate1-vrate2;
@@ -272,7 +294,7 @@ Isdotv2=vx.p1v2*pr.sigma*vx.p2v2*pr.p4.*Ev2-(pr.h+pr.gX).*Isv2;
 Hdot=pr.h.*(Is+Isv1+Isv2)-(pr.g3+pr.mu).*H;
 DEdot=pr.mu.*H;
 Rdot=pr.g1*(Ia+Iav1+Iav2)+pr.g2.*(Im+Imv1+Imv2)+pr.g3.*H+pr.gX.*(Is+Isv1+Isv2);
-f=[Sdot;Edot;Iadot;Imdot;Isdot;Sholddotv1;Sdotv1;Edotv1;Iadotv1;Imdotv1;Isdotv1;Sholddotv2;Sdotv2;Edotv2;Iadotv2;Imdotv2;Isdotv2;Hdot;DEdot;Rdot];
+f=[Sdot;Edot;Iadot;Imdot;Isdot;Sholddotv1;Sdotv1;Edotv1;Iadotv1;Imdotv1;Isdotv1;Sholddotv2;Sdotv2;Edotv2;Iadotv2;Imdotv2;Isdotv2;Hdot;DEdot;Rdot;Vdot];
 g=pr.h.*(Is+Isv1+Isv2);%Hin
 %Track vaccine admin to date
 end
