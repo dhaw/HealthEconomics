@@ -2,47 +2,76 @@ function [f,g]=heSimCovid19vax(pr,beta,tvec,Dvec,n,nbar,NNvec,phi1,phi2,seedvec,
 hospInc=0;
 na=4;%Num ages
 lx=length(S0)-na;
-adInd=3;
+adInd=3;%Some done manually
+sumWorkingAge=sum(NNvec([1:lx,lx+3],1));
 %%
-%Vacconation parameters:
+%Vaccination parameters:
 vx=struct;
 vx.NNage=[4064198,12192593,36577778,13005432]';
 prop50=15/45;
-tpoints=[1,32,122];%[336,367,457];%Period end points - 1st Dec, 1st Jan, 1st April
+%propCare=398840/vx.NNage(4);
+%upCare=.95;
+%upOver50=.75;
+upUnder50=.75;
+tpoints=[336,367,457];%-335;%Period end points - 1st Dec, 1st Jan, 1st April
 tint=diff(tpoints);%Period lengths
-%PERIOD 1
-vx.startv1=tpoints(1);%336;%336 - 1st Dec
-vx.rate1=[zeros(nbar-1,1);2e6/tint(1)]/vx.NNage(4);
-vx.rate1age=[0;0;0;2e6/tint(1)];%By age group only, times N
-%vx.uptake1=ones(na,1);
-%PERIOD 2:
-%Proportion of working age over 50:
-vx.startv2=tpoints(2);%367;%Next vax change; 398=1st Feb 2021
-NNnext=[0;0;prop50*vx.NNage(3);vx.NNage(4)-2e6];
-%vx.rate2=[prop50*ones(nbar-4,1);0;0;prop50;1];
-vx.rate2age=[0;0;prop50;1].*NNnext/sum(NNnext)/tint(2);
-totRate2=sum(vx.rate2age);%To determine rate for next period
-%vx.uptake2=zeros(na,1);
-%PERIOD 3:
-vx.startv2=245;
-vx.startv3=102;%367;%Next vax change; 398=1st Feb 2021
-vx.rate3=[prop50*ones(nbar-na,1);0;0;prop50;1]/tint(2);
-vx.rate3age=[0;0;prop50;1]/tint(2);
+
+%PERIOD 1 - 2e6 doses to 65+:
+vx.startv1=tpoints(1);
+vx.rate1=[zeros(nbar-1,1);2e6]/tint(1);
+vx.rate1age=[0;0;0;2e6];%By age group only, times N
+%Note: care and non-care not ordered
+
+%PERIOD 2 - over 50s - 3 months to cover all (if uptake=100%):
+vx.startv2=tpoints(2);
+NNnext=[0;0;prop50*vx.NNage(3);vx.NNage(4)-2e6];%toVax
+vx.rate2age=NNnext/tint(2);
+vx.rate2base=[repmat(vx.rate2age(3),lx,1);vx.rate2age];
+%Note: split across economy in loop of econ timepoints
+vx.totRate=sum(vx.rate2age);%Baseline rate for rest of programme
+
+%{
+%Calculate which group exhausts first (accounting for uptake):
+toVax=NNnext.*[0;0;.75;.95*propCare+.75*(1-propCare)];%Accounting for uptake
+T=toVax./vx.rate2age;%Pop to vaccinate/vax rate %Assumes NNage(4)>2e6
+T(vx.rate2age==0)=0;
+[tnext,which]=min(T);
+T=[0;0;68.25;68.8081];
+%}
+
+%PERIOD 3 - remainder of over 50s OR over 65's in single age group:
+%Calc start time for period 3 - based on block above
+%Note: not from tpoints as that assumes 100% uptake in order to calculate
+%rates
+
+%PERIOD 3 - under 50s:
+vx.startv3=tpoints(2)+69;%367;%Next vax change; 398=1st Feb 2021
+%NNnext=[0;0;(1-prop50)*vx.NNage(3);0];%toVax
+vx.rate3age=[0;0;vx.totRate;0];
+vx.rate3base=[repmat(vx.rate3age(3),lx,1);vx.rate3age];
+
+%
+%Calculate end of vax time:
+toVax=[0;0;upUnder50*(1-prop50)*vx.NNage(3);0];%Accounting for uptake
+T=toVax./vx.rate3age;%Pop to vaccinate/vax rate %Assumes NNage(4)>2e6
+T(vx.rate3age==0)=0;
+%[tnext,which]=min(T);
+vx.fin=vx.startv3+T(3);
+%}
+
 %Fix parameters:
 %VACCINE 1:
-vx.sus1=1;
+vx.sus1=.9;
 vx.tr1=0;
 vx.p1v1=2/3;
 vx.p2v1=pr.p2;
 %VACCINE 2:
-vx.sus2=1;
+vx.sus2=.9;
 vx.tr2=0;
 vx.p1v2=2/3;
 vx.p2v2=pr.p2;
 %Uptake:
-propCare=398840/vx.NNage(4);
-upUnder50=.75;
-vx.uptake=[0;0;.75*prop50+upUnder50*(1-prop50);.95*propCare+.75*(1-propCare)];
+
 %%
 solvetype=2;
 zn=zeros(nbar,1);
@@ -51,7 +80,7 @@ if solvetype==2
     lt=length(tvec);
     t0=tvec(1);%tvec(1)=start time for while simulation
     %y0=[S0;repmat(zn,11,1);NNbar-S0];%HE
-    y0=[S0;repmat(zn,18,1);NNbar-S0;zeros(4,1)];%IC %NumAgeGroupsExplicit
+    y0=[S0;repmat(zn,18,1);NNbar-S0;zn];%IC %NumAgeGroupsExplicit
     toutAll=[];
     Sout=[];
     Soutv1=Sout;
@@ -68,9 +97,13 @@ if solvetype==2
         tend=tvec(i+1);
         NNfeed=NNvec(:,i);
         
+        %Rates by sector:
         NNnext=NNfeed;
-        NNnext(end)=NNnext(end)-2e6;
-        vx.rate2=[prop50*ones(nbar-4,1);0;0;prop50;1].*NNnext/sum(NNnext)/tint(2);
+        NNnext([1:lx,lx+3])=NNnext([1:lx,lx+3])/sumWorkingAge;
+        NNnext(lx+[1,2])=0;
+        NNnext(end)=1;
+        vx.rate2=NNnext.*[repmat(vx.rate2age(3),lx,1);vx.rate2age];
+        vx.rate3=NNnext.*[repmat(vx.rate3age(3),lx,1);vx.rate3age];
         
         NNfeed(NNfeed==0)=1;
         %
@@ -124,7 +157,7 @@ if solvetype==2
             %Move all infection statuses:
             %DON'T PANIC - THIS IS y0new (as a column vector)!
             %y0=reshape(y0,[n,13]);%HE
-            v0=y0(end-3:end);%NumAgeGroupsExplicit
+            v0=y0(end-nbar+1:end);%NumAgeGroupsExplicit
             y0=reshape(y0(1:20*nbar),[n,20]);%IC
             %y0w2h=y0(1:n-1,:).*repmat(Xw2h,1,13);%HE
             y0w2h=y0(1:lx,:).*repmat(Xw2h,1,20);%IC
@@ -251,26 +284,38 @@ end
 foi=phi*beta*(D*(I./NN0));
 Sfoiv1=phi*((1-vx.sus1)*beta*Sv1.*(D*(I./NN0)));%+seed1);
 Sfoiv2=phi*((1-vx.sus2)*beta*Sv2.*(D*(I./NN0)));%+seed1);
+%%
 %
+%{
 %Uptake
 uptake=vx.uptake-V./vx.NNage;
 uptake(uptake<0)=0;
 uptake(uptake>0)=1;
 uptake=[repmat(uptake(3),numSectors,1);uptake];
-if t>vx.startv2
-    vrate1=.2*vx.rate2.*S.*uptake;
-    vrate2=.8*vx.rate2.*S.*uptake;
-    Vdot=vx.rate1age+vx.rate2age;
-elseif t>vx.startv1
-    vrate1=vx.rate1.*S.*uptake;
+%}
+nonVax=NN0-V;%Currently never zero - change if 100% uptake by sector/age group
+if t>vx.fin
+    vrate1=zeros(nbar,1);
     vrate2=zeros(nbar,1);
-    Vdot=vx.rate1age;
+    Vdot=zeros(nbar,1);
+elseif t>vx.startv3
+    vrate1=.2*vx.rate3.*S./nonVax;
+    vrate2=.8*vx.rate3.*S./nonVax;
+    Vdot=vx.rate3;
+elseif t>vx.startv2
+    vrate1=.2*vx.rate2.*S./nonVax;
+    vrate2=.8*vx.rate2.*S./nonVax;
+    Vdot=vx.rate2;
+elseif t>vx.startv1
+    vrate1=vx.rate1.*S./nonVax;
+    vrate2=zeros(nbar,1);
+    Vdot=vx.rate1;
 else 
     vrate1=zeros(nbar,1);
     vrate2=zeros(nbar,1);
-    Vdot=zeros(4,1);
+    Vdot=zeros(nbar,1);
 end
-%
+%%
 Sdot=-S.*foi-phi*seed1-vrate1-vrate2;
 Edot=(S+Sholdv1+Sholdv2).*foi+phi*seed1-pr.sigma*E;
 Iadot=(1-pr.p1)*pr.sigma*E-pr.g1*Ia;
@@ -357,7 +402,7 @@ if solvetype==2
     pointsy=.93*maxY;
     txt={'PRE','LD','1','2','3','4','5','6'};
     for i=1:lt-1
-        text(points(i),pointsy,txt{i},'fontsize',20)
+        text(points(i),pointsy,txt{i},'fontsize',15)%20)
     end
     
     xlabel('Time','FontSize',fs);
@@ -365,8 +410,8 @@ if solvetype==2
     set(gca,'FontSize',fs);
     axis([0,tend,0,maxY])
     
-    xticks([1,32,61,92,122,153,183,214,245,275,306,336,367,398])
-    xticklabels({'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb'})
+    xticks([])%[1,32,61,92,122,153,183,214,245,275,306,336,367,398])
+    %xticklabels({'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb'})
     
     legend([h1,h2],'Inc.','HO','location','W')
     %
